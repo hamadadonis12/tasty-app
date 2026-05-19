@@ -1,0 +1,1 @@
+{"name": "tastylife-monorepo", "private": true, "workspaces": ["apps/*", "packages/*"], "packageManager": "pnpm@11.1.3"}

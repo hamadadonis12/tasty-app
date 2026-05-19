@@ -1,0 +1,90 @@
+# Node
+node_modules/
+dist/
+build/
+.next/
+
+# Flutter/Dart
+.dart_tool/
+.packages
+.pub-cache/
+.pub/
+build/
+*.DS_Store
+*.iml
+.idea/
+.vscode/
+
+# MacOS
+.DS_Store
+
+# Logs
+*.log
+
+# Windows
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# vendor
+vendor/
+
+# Mac/Linux build files
+**/build/
+**/.dart_tool/
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+
+# App-specific build files
+apps/customer/build/
+apps/driver/build/
+apps/restaurant/build/
+apps/admin/.next/
+apps/admin/out/
+apps/api/vendor/
+apps/api/node_modules/
+
+# Mac / iOS
+**/*.xcworkspace/
+**/*.xcodeproj/
+**/Pods/
+**/.symlinks/
+
+# Windows
+**/windows/flutter/ephemeral/
+
+
+# Flutter
+**/ios/Runner.xcodeproj/
+**/ios/Runner.xcworkspace/
+**/macos/Runner.xcodeproj/
+**/macos/Runner.xcworkspace/
+**/windows/runner/
+**/linux/runner/
+**/windows/flutter/
+**/linux/flutter/
+
+# Mac/Linux build files
+**/build/
+**/.dart_tool/
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+
+# App-specific build files
+apps/customer/build/
+apps/driver/build/
+apps/restaurant/build/
+apps/admin/.next/
+apps/admin/out/
+apps/api/vendor/
+apps/api/node_modules/
+
+# Mac / iOS
+**/*.xcworkspace/
+**/*.xcodeproj/
+**/Pods/
+**/.symlinks/
+
+# Windows
+**/windows/flutter/ephemeral/
