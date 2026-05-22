@@ -1,6 +1,6 @@
 name: design_tokens
-description: Shared design tokens for TastyLife.
-version: 1.0.0
+description: Shared design tokens for TastyLife — Luxe-Functional aesthetic mirroring the Stitch reference.
+version: 2.0.0
 publish_to: none
 
 environment:
@@ -10,6 +10,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  google_fonts: ^6.2.1
 
 dev_dependencies:
   flutter_test:
