@@ -360,8 +360,6 @@ class _InfoPanel extends StatelessWidget {
   final Restaurant restaurant;
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final text = Theme.of(context).textTheme;
     return ListView(
       padding: const EdgeInsets.fromLTRB(
         TastySpacing.marginPage, TastySpacing.stackLg, TastySpacing.marginPage, 140,
