@@ -93,47 +93,47 @@ class _RestaurantDetailScreenState extends State<RestaurantDetailScreen>
                 ),
               ),
               SliverToBoxAdapter(
-                child: Transform.translate(
-                  offset: const Offset(0, -32),
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(horizontal: TastySpacing.marginPage),
-                    padding: const EdgeInsets.all(TastySpacing.gutterCard),
-                    decoration: BoxDecoration(
-                      color: scheme.surfaceContainerLowest,
-                      borderRadius: TastyRadii.xlRadius,
-                      boxShadow: TastyShadows.ambient,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(_r.name, style: text.titleLarge),
-                        const SizedBox(height: 4),
-                        Text('${_r.cuisine} · ${_r.district} · ${_r.priceLevel}',
-                            style: text.bodyMedium?.copyWith(color: scheme.onSurfaceVariant)),
-                        const SizedBox(height: TastySpacing.stackMd),
-                        Row(
-                          children: [
-                            _StatPill(
-                              icon: Icons.star_rounded,
-                              label: '${_r.rating}',
-                              sub: '(${_r.reviewCount})',
-                            ),
-                            const SizedBox(width: TastySpacing.stackSm),
-                            _StatPill(
-                              icon: Icons.pedal_bike,
-                              label: _r.etaRange,
-                              sub: '',
-                            ),
-                            const SizedBox(width: TastySpacing.stackSm),
-                            _StatPill(
-                              icon: Icons.account_balance_wallet_outlined,
-                              label: '\$${_r.deliveryFee.toStringAsFixed(2)} fee',
-                              sub: '',
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
+                child: Container(
+                  margin: const EdgeInsets.symmetric(
+                    horizontal: TastySpacing.marginPage,
+                    vertical: TastySpacing.stackMd,
+                  ),
+                  padding: const EdgeInsets.all(TastySpacing.gutterCard),
+                  decoration: BoxDecoration(
+                    color: scheme.surfaceContainerLowest,
+                    borderRadius: TastyRadii.xlRadius,
+                    boxShadow: TastyShadows.ambient,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(_r.name, style: text.titleLarge),
+                      const SizedBox(height: 4),
+                      Text('${_r.cuisine} · ${_r.district} · ${_r.priceLevel}',
+                          style: text.bodyMedium?.copyWith(color: scheme.onSurfaceVariant)),
+                      const SizedBox(height: TastySpacing.stackMd),
+                      Row(
+                        children: [
+                          _StatPill(
+                            icon: Icons.star_rounded,
+                            label: '${_r.rating}',
+                            sub: '(${_r.reviewCount})',
+                          ),
+                          const SizedBox(width: TastySpacing.stackSm),
+                          _StatPill(
+                            icon: Icons.pedal_bike,
+                            label: _r.etaRange,
+                            sub: '',
+                          ),
+                          const SizedBox(width: TastySpacing.stackSm),
+                          _StatPill(
+                            icon: Icons.account_balance_wallet_outlined,
+                            label: '\$${_r.deliveryFee.toStringAsFixed(2)} fee',
+                            sub: '',
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
               ),

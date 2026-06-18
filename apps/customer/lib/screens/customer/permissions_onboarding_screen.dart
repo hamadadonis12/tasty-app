@@ -29,6 +29,12 @@ class _PermissionsOnboardingScreenState extends State<PermissionsOnboardingScree
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              // Scrollable upper content so short screens don't overflow.
+              Expanded(
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
               const SizedBox(height: TastySpacing.stackLg),
               // Circular hero "sticker"
               Center(
@@ -84,7 +90,11 @@ class _PermissionsOnboardingScreenState extends State<PermissionsOnboardingScree
                   setState(() => _notifications = v);
                 },
               ),
-              const Spacer(),
+                      const SizedBox(height: TastySpacing.sectionGap),
+                    ],
+                  ),
+                ),
+              ),
               FilledButton(
                 onPressed: () {
                   HapticFeedback.mediumImpact();

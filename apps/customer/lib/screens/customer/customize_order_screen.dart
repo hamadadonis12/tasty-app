@@ -258,14 +258,14 @@ class _CustomizeOrderScreenState extends State<CustomizeOrderScreen> {
                           padding: const EdgeInsets.symmetric(vertical: 14),
                         ),
                         child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const Text('Add to Cart'),
-                            const Spacer(),
-                            AnimatedSwitcher(
-                              duration: TastyMotion.durationSm,
-                              child: Text('\$${total.toStringAsFixed(2)}',
-                                  key: ValueKey(total),
-                                  style: text.titleSmall?.copyWith(color: scheme.onPrimaryContainer)),
+                            Text(
+                              'Add to Cart  ·  \$${total.toStringAsFixed(2)}',
+                              style: text.titleSmall?.copyWith(
+                                color: scheme.onPrimaryContainer,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ],
                         ),

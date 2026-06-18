@@ -2,9 +2,15 @@ import 'package:design_tokens/design_tokens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../state/app_state.dart';
+import 'add_payment_method_screen.dart';
+import 'send_credit_screen.dart';
+import 'transaction_history_screen.dart';
+
 /// `wallet_payments` — TastyLife balance + payment methods + recent
 /// transactions list. Localized to Kinshasa: Orange Money, Airtel Money,
-/// card, and cash on delivery.
+/// card, and cash on delivery. Balance, methods and transactions are all
+/// backed by [AppState], so top-ups, transfers and new methods are live.
 class WalletPaymentsScreen extends StatefulWidget {
   const WalletPaymentsScreen({super.key});
   @override
@@ -13,23 +19,16 @@ class WalletPaymentsScreen extends StatefulWidget {
 
 class _WalletPaymentsScreenState extends State<WalletPaymentsScreen> {
   int _selectedMethod = 0;
-  static const _methods = <(IconData, String, String)>[
-    (Icons.smartphone, 'Orange Money', '+243 89 *** **45'),
-    (Icons.smartphone, 'Airtel Money', '+243 99 *** **12'),
-    (Icons.credit_card, 'Visa', '•••• 4242'),
-    (Icons.payments, 'Cash on delivery', 'Pay the driver'),
-  ];
 
-  void _snack(String msg) {
-    HapticFeedback.lightImpact();
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(msg),
-      duration: const Duration(seconds: 2),
-    ));
+  void _push(Widget screen) {
+    HapticFeedback.selectionClick();
+    Navigator.of(context).push(MaterialPageRoute(builder: (_) => screen));
   }
 
   void _showTopUpSheet() {
     HapticFeedback.lightImpact();
+    final methods = AppState.instance.paymentMethods;
+    final method = methods[_selectedMethod.clamp(0, methods.length - 1)].label;
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -37,7 +36,7 @@ class _WalletPaymentsScreenState extends State<WalletPaymentsScreen> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(TastyRadii.xxl)),
       ),
-      builder: (_) => _TopUpSheet(method: _methods[_selectedMethod].$2),
+      builder: (_) => _TopUpSheet(method: method),
     );
   }
 
@@ -53,95 +52,116 @@ class _WalletPaymentsScreenState extends State<WalletPaymentsScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.history),
-            onPressed: () => _snack('Transaction history coming soon'),
+            onPressed: () => _push(const TransactionHistoryScreen()),
           ),
           const SizedBox(width: 4),
         ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(TastySpacing.marginPage),
-        children: [
-          Container(
-            padding: const EdgeInsets.all(TastySpacing.gutterCard),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [scheme.primary, scheme.primaryContainer],
-              ),
-              borderRadius: TastyRadii.xxlRadius,
-              boxShadow: TastyShadows.glow,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('TASTY CREDIT',
-                    style: text.labelMedium?.copyWith(
-                      color: Colors.white.withValues(alpha: 0.85),
-                      letterSpacing: 1.6,
-                    )),
-                const SizedBox(height: 8),
-                Text('45 800 FC',
-                    style: text.displaySmall?.copyWith(color: Colors.white)),
-                Text('≈ \$22.50',
-                    style: text.bodyMedium?.copyWith(color: Colors.white.withValues(alpha: 0.8))),
-                const SizedBox(height: TastySpacing.stackMd),
-                Row(
+      body: ListenableBuilder(
+        listenable: AppState.instance,
+        builder: (context, _) {
+          final s = AppState.instance;
+          final methods = s.paymentMethods;
+          if (_selectedMethod >= methods.length) _selectedMethod = 0;
+          final recent = s.transactions.take(4).toList();
+          return ListView(
+            padding: const EdgeInsets.all(TastySpacing.marginPage),
+            children: [
+              Container(
+                padding: const EdgeInsets.all(TastySpacing.gutterCard),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [scheme.primary, scheme.primaryContainer],
+                  ),
+                  borderRadius: TastyRadii.xxlRadius,
+                  boxShadow: TastyShadows.glow,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
-                      child: FilledButton.icon(
-                        icon: const Icon(Icons.add),
-                        label: const Text('Top Up'),
-                        style: FilledButton.styleFrom(
-                          backgroundColor: Colors.white,
-                          foregroundColor: scheme.primary,
+                    Text('TASTY CREDIT',
+                        style: text.labelMedium?.copyWith(
+                          color: Colors.white.withValues(alpha: 0.85),
+                          letterSpacing: 1.6,
+                        )),
+                    const SizedBox(height: 8),
+                    Text(formatFc(s.balanceFc),
+                        style: text.displaySmall?.copyWith(color: Colors.white)),
+                    Text('≈ \$${s.balanceUsd.toStringAsFixed(2)}',
+                        style: text.bodyMedium?.copyWith(color: Colors.white.withValues(alpha: 0.8))),
+                    const SizedBox(height: TastySpacing.stackMd),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: FilledButton.icon(
+                            icon: const Icon(Icons.add),
+                            label: const Text('Top Up'),
+                            style: FilledButton.styleFrom(
+                              backgroundColor: Colors.white,
+                              foregroundColor: scheme.primary,
+                            ),
+                            onPressed: _showTopUpSheet,
+                          ),
                         ),
-                        onPressed: _showTopUpSheet,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        icon: const Icon(Icons.send, color: Colors.white),
-                        label: const Text('Send', style: TextStyle(color: Colors.white)),
-                        style: OutlinedButton.styleFrom(
-                          side: BorderSide(color: Colors.white.withValues(alpha: 0.6)),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            icon: const Icon(Icons.send, color: Colors.white),
+                            label: const Text('Send', style: TextStyle(color: Colors.white)),
+                            style: OutlinedButton.styleFrom(
+                              side: BorderSide(color: Colors.white.withValues(alpha: 0.6)),
+                            ),
+                            onPressed: () => _push(const SendCreditScreen()),
+                          ),
                         ),
-                        onPressed: () => _snack('Send credit to a friend — coming soon'),
-                      ),
-                    ),
+                      ],
+                    )
                   ],
-                )
-              ],
-            ),
-          ),
-          const SizedBox(height: TastySpacing.sectionGap),
-          Text('Payment methods', style: text.titleSmall),
-          const SizedBox(height: TastySpacing.stackSm),
-          for (var i = 0; i < _methods.length; i++)
-            _Method(
-              icon: _methods[i].$1,
-              label: _methods[i].$2,
-              sub: _methods[i].$3,
-              selected: i == _selectedMethod,
-              onTap: () {
-                HapticFeedback.selectionClick();
-                setState(() => _selectedMethod = i);
-              },
-            ),
-          TextButton.icon(
-            onPressed: () => _snack('Add a new method — coming soon'),
-            icon: const Icon(Icons.add),
-            label: const Text('Add new method'),
-          ),
-          const SizedBox(height: TastySpacing.sectionGap),
-          Text('Recent transactions', style: text.titleSmall),
-          const SizedBox(height: TastySpacing.stackSm),
-          _Tx(label: 'Maison Kinshasa', amount: '−12 500 FC', sub: 'Today · 19:42', positive: false),
-          _Tx(label: 'Wallet top-up', amount: '+25 000 FC', sub: 'Yesterday · 09:11', positive: true),
-          _Tx(label: 'Le Grill Premium', amount: '−18 200 FC', sub: 'May 20 · 20:30', positive: false),
-          _Tx(label: 'Referral bonus', amount: '+5 000 FC', sub: 'May 18 · 14:02', positive: true),
-        ],
+                ),
+              ),
+              const SizedBox(height: TastySpacing.sectionGap),
+              Text('Payment methods', style: text.titleSmall),
+              const SizedBox(height: TastySpacing.stackSm),
+              for (var i = 0; i < methods.length; i++)
+                _Method(
+                  icon: methods[i].icon,
+                  label: methods[i].label,
+                  sub: methods[i].sub,
+                  selected: i == _selectedMethod,
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    setState(() => _selectedMethod = i);
+                  },
+                ),
+              TextButton.icon(
+                onPressed: () => _push(const AddPaymentMethodScreen()),
+                icon: const Icon(Icons.add),
+                label: const Text('Add new method'),
+              ),
+              const SizedBox(height: TastySpacing.sectionGap),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('Recent transactions', style: text.titleSmall),
+                  TextButton(
+                    onPressed: () => _push(const TransactionHistoryScreen()),
+                    child: const Text('See all'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: TastySpacing.stackSm),
+              for (final t in recent)
+                _Tx(
+                  label: t.label,
+                  amount: formatFc(t.amountFc, signed: true),
+                  sub: t.sub,
+                  positive: t.positive,
+                ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -324,9 +344,11 @@ class _TopUpSheetState extends State<_TopUpSheet> {
             child: FilledButton(
               onPressed: () {
                 HapticFeedback.mediumImpact();
+                AppState.instance.topUp(_amount, method: widget.method);
                 Navigator.of(context).pop();
                 ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                  content: Text('Top-up of $_amount FC initiated via ${widget.method}'),
+                  content: Text('Topped up ${formatFc(_amount)} via ${widget.method}'),
+                  behavior: SnackBarBehavior.floating,
                 ));
               },
               style: FilledButton.styleFrom(

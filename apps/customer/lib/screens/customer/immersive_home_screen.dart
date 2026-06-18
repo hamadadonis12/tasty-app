@@ -6,9 +6,11 @@ import 'package:flutter/services.dart';
 
 import '../../state/cart_controller.dart';
 import 'cart_screen.dart';
+import 'category_restaurants_screen.dart';
 import 'coupon_wallet_screen.dart';
 import 'explore_categories_screen.dart';
 import 'explore_tastylife_screen.dart';
+import 'find_my_craving_screen.dart';
 import 'kinshasa_luxe_screen.dart';
 import 'live_order_tracking_screen.dart';
 import 'notifications_screen.dart';
@@ -49,9 +51,22 @@ class ImmersiveHomeScreen extends StatelessWidget {
             ),
             const SliverToBoxAdapter(child: SizedBox(height: TastySpacing.sectionGap)),
             SliverToBoxAdapter(
-              child: _PromoStories(
+              child: _FindMyCravingCard(
                 onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const CouponWalletScreen()),
+                  MaterialPageRoute(builder: (_) => const FindMyCravingScreen()),
+                ),
+              ),
+            ),
+            const SliverToBoxAdapter(child: SizedBox(height: TastySpacing.sectionGap)),
+            SliverToBoxAdapter(
+              child: _PromoStories(
+                onCategoryTap: (label, tags) => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => CategoryRestaurantsScreen(
+                      categoryLabel: label,
+                      tags: tags,
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -330,14 +345,20 @@ class _CinematicHero extends StatelessWidget {
 }
 
 class _PromoStories extends StatelessWidget {
-  const _PromoStories({this.onTap});
-  final VoidCallback? onTap;
+  const _PromoStories({required this.onCategoryTap});
+
+  /// Fired with (label, tags) when a category circle is tapped.
+  final void Function(String label, List<String> tags) onCategoryTap;
+
+  /// Each circle is a discoverable cuisine / mood. The `tags` list is what
+  /// CategoryRestaurantsScreen filters against. "50% Off" routes the user
+  /// to budget restaurants by matching the `cheap`/`comfort` tags.
   static const _items = <_PromoItem>[
-    _PromoItem('50% Off', 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=200&q=80', true),
-    _PromoItem('New Sushi', 'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=200&q=80', false),
-    _PromoItem('Healthy', 'https://images.unsplash.com/photo-1490645935967-10de6ba17061?w=200&q=80', true),
-    _PromoItem('Desserts', 'https://images.unsplash.com/photo-1551024601-bec78aea704b?w=200&q=80', false),
-    _PromoItem('Late Night', 'https://images.unsplash.com/photo-1551183053-bf91a1d81141?w=200&q=80', true),
+    _PromoItem('50% Off', 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=200&q=80', true, tags: ['cheap', 'comfort']),
+    _PromoItem('New Sushi', 'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=200&q=80', false, tags: ['sushi', 'asian']),
+    _PromoItem('Healthy', 'https://images.unsplash.com/photo-1490645935967-10de6ba17061?w=200&q=80', true, tags: ['healthy']),
+    _PromoItem('Desserts', 'https://images.unsplash.com/photo-1551024601-bec78aea704b?w=200&q=80', false, tags: ['dessert', 'cafe']),
+    _PromoItem('Late Night', 'https://images.unsplash.com/photo-1551183053-bf91a1d81141?w=200&q=80', true, tags: ['comfort', 'burger', 'pizza']),
   ];
 
   @override
@@ -352,7 +373,10 @@ class _PromoStories extends StatelessWidget {
         itemBuilder: (_, i) {
           final p = _items[i];
           return GestureDetector(
-            onTap: onTap,
+            onTap: () {
+              HapticFeedback.selectionClick();
+              onCategoryTap(p.label, p.tags);
+            },
             child: Column(
               children: [
                 Container(
@@ -393,10 +417,11 @@ class _PromoStories extends StatelessWidget {
 }
 
 class _PromoItem {
-  const _PromoItem(this.label, this.image, this.featured);
+  const _PromoItem(this.label, this.image, this.featured, {required this.tags});
   final String label;
   final String image;
   final bool featured;
+  final List<String> tags;
 }
 
 class _SectionHeader extends StatelessWidget {
@@ -461,7 +486,7 @@ class _TrendingRail extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 260,
+      height: 276,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: TastySpacing.marginPage),
@@ -476,6 +501,86 @@ class _TrendingRail extends StatelessWidget {
         ),
         separatorBuilder: (_, __) => const SizedBox(width: TastySpacing.gutterCard),
         itemCount: _items.length,
+      ),
+    );
+  }
+}
+
+/// HungerStation-style "Find My Craving" entry. Tappable card with a
+/// gradient hook and the magic-wand emoji. Lives between the hero and
+/// the promo stories so it's impossible to miss.
+class _FindMyCravingCard extends StatelessWidget {
+  const _FindMyCravingCard({required this.onTap});
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final text = Theme.of(context).textTheme;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: TastySpacing.marginPage),
+      child: Material(
+        borderRadius: TastyRadii.xlRadius,
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: TastyRadii.xlRadius,
+          onTap: () {
+            HapticFeedback.mediumImpact();
+            onTap();
+          },
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  scheme.primary,
+                  scheme.primaryContainer,
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: TastyRadii.xlRadius,
+              boxShadow: TastyShadows.glow,
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 52,
+                  height: 52,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.25),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Text('🪄', style: TextStyle(fontSize: 28)),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Find My Craving',
+                        style: text.titleMedium?.copyWith(
+                          color: scheme.onPrimary,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'AI picks 5 dishes that match your mood right now.',
+                        style: text.bodySmall?.copyWith(
+                          color: scheme.onPrimary.withValues(alpha: 0.85),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(Icons.chevron_right, color: scheme.onPrimary),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -514,7 +619,48 @@ class _RestaurantCard extends StatelessWidget {
             borderRadius: const BorderRadius.vertical(top: Radius.circular(TastyRadii.xl)),
             child: AspectRatio(
               aspectRatio: 16 / 10,
-              child: Image.network(image, fit: BoxFit.cover, errorBuilder: _imageFallback),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  Image.network(image, fit: BoxFit.cover, errorBuilder: _imageFallback),
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: ListenableBuilder(
+                      listenable: CartController.instance,
+                      builder: (context, _) {
+                        final fav = CartController.instance.isFavorite(name);
+                        return Material(
+                          color: Colors.black.withValues(alpha: 0.35),
+                          shape: const CircleBorder(),
+                          child: InkWell(
+                            customBorder: const CircleBorder(),
+                            onTap: () {
+                              HapticFeedback.lightImpact();
+                              CartController.instance.toggleFavorite(name);
+                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                                content: Text(fav
+                                    ? 'Removed $name from favourites'
+                                    : 'Added $name to favourites'),
+                                behavior: SnackBarBehavior.floating,
+                                duration: const Duration(seconds: 2),
+                              ));
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.all(8),
+                              child: Icon(
+                                fav ? Icons.favorite : Icons.favorite_border,
+                                color: fav ? TastyColors.brandOrange : Colors.white,
+                                size: 18,
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
           Padding(

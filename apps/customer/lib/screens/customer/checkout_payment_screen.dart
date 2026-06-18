@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:design_tokens/design_tokens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -25,12 +27,23 @@ class CheckoutPaymentScreen extends StatefulWidget {
 class _CheckoutPaymentScreenState extends State<CheckoutPaymentScreen> {
   bool _asap = true;
   int _payment = 0;
+  double _tip = 0.0;
+  bool _contactless = false;
   final _instructionsCtrl = TextEditingController();
 
   static const _delivery = 2.00;
   static const _service = 0.50;
+  static const _tipOptions = <(String, double)>[
+    ('No tip', 0.0),
+    ('\$1', 1.0),
+    ('\$2', 2.0),
+    ('\$3', 3.0),
+    ('\$5', 5.0),
+  ];
+
   double get _subtotal => CartController.instance.subtotal;
-  double get _total => _subtotal + _delivery + _service;
+  double get _total => (_subtotal + _delivery + _service + _tip - CartController.instance.discount)
+      .clamp(0.0, double.infinity);
 
   @override
   void initState() {
@@ -117,6 +130,51 @@ class _CheckoutPaymentScreenState extends State<CheckoutPaymentScreen> {
           ),
           const SizedBox(height: TastySpacing.sectionGap),
 
+          // Tip the driver
+          _SectionHeader(icon: Icons.volunteer_activism, label: 'Tip Your Driver'),
+          const SizedBox(height: TastySpacing.stackSm),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                for (final (i, opt) in _tipOptions.indexed) ...[
+                  if (i > 0) const SizedBox(width: 8),
+                  _TipChip(
+                    label: opt.$1,
+                    selected: _tip == opt.$2,
+                    onTap: () {
+                      HapticFeedback.selectionClick();
+                      setState(() => _tip = opt.$2);
+                    },
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(height: TastySpacing.sectionGap),
+
+          // Contactless delivery
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surfaceContainerLowest,
+              borderRadius: TastyRadii.xlRadius,
+              boxShadow: TastyShadows.ambient,
+            ),
+            child: SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              value: _contactless,
+              onChanged: (v) {
+                HapticFeedback.selectionClick();
+                setState(() => _contactless = v);
+              },
+              secondary: Icon(Icons.no_meeting_room, color: Theme.of(context).colorScheme.primary),
+              title: const Text('Contactless delivery'),
+              subtitle: const Text('Driver leaves your order at the door'),
+            ),
+          ),
+          const SizedBox(height: TastySpacing.sectionGap),
+
           _SectionHeader(icon: Icons.credit_card, label: 'Payment Method'),
           const SizedBox(height: TastySpacing.stackSm),
           for (final (i, m) in _methods.indexed)
@@ -172,15 +230,50 @@ class _CheckoutPaymentScreenState extends State<CheckoutPaymentScreen> {
                             price: '\$${it.lineTotal.toStringAsFixed(2)}',
                           ),
                         const Divider(height: 16),
-                        _SummaryRow(label: 'Subtotal', value: '\$${_subtotal.toStringAsFixed(2)}'),
-                        _SummaryRow(label: 'Delivery Fee', value: '\$${_delivery.toStringAsFixed(2)}'),
-                        _SummaryRow(label: 'Service Fee', value: '\$${_service.toStringAsFixed(2)}'),
+                        _SummaryRow(
+                          label: 'Subtotal',
+                          value: '\$${_subtotal.toStringAsFixed(2)}',
+                          sub: formatCdf(_subtotal),
+                        ),
+                        _SummaryRow(
+                          label: 'Delivery Fee',
+                          value: '\$${_delivery.toStringAsFixed(2)}',
+                          sub: formatCdf(_delivery),
+                        ),
+                        _SummaryRow(
+                          label: 'Service Fee',
+                          value: '\$${_service.toStringAsFixed(2)}',
+                          sub: formatCdf(_service),
+                        ),
+                        if (_tip > 0)
+                          _SummaryRow(
+                            label: 'Driver Tip',
+                            value: '\$${_tip.toStringAsFixed(2)}',
+                            sub: formatCdf(_tip),
+                          ),
+                        if (CartController.instance.discount > 0)
+                          _SummaryRow(
+                            label: 'Loyalty Discount',
+                            value: '-\$${CartController.instance.discount.toStringAsFixed(2)}',
+                            color: Colors.green,
+                          ),
                         const Divider(height: 16),
                         Row(
+                          crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
                             Expanded(child: Text('Total', style: text.titleLarge)),
-                            Text('\$${_total.toStringAsFixed(2)}',
-                                style: text.headlineSmall?.copyWith(color: scheme.primary)),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                Text('\$${_total.toStringAsFixed(2)}',
+                                    style: text.headlineSmall?.copyWith(color: scheme.primary)),
+                                Text(formatCdf(_total),
+                                    style: text.labelSmall?.copyWith(
+                                      color: scheme.onSurfaceVariant,
+                                      fontFeatures: const [FontFeature.tabularFigures()],
+                                    )),
+                              ],
+                            ),
                           ],
                         ),
                       ],
@@ -232,6 +325,8 @@ class _CheckoutPaymentScreenState extends State<CheckoutPaymentScreen> {
                 deliveryFee: _delivery,
                 serviceFee: _service,
                 paymentLabel: _methods[_payment].label,
+                tip: _tip,
+                contactless: _contactless,
               );
               Navigator.of(context).push(
                 PageRouteBuilder(
@@ -565,19 +660,75 @@ class _LineItem extends StatelessWidget {
 }
 
 class _SummaryRow extends StatelessWidget {
-  const _SummaryRow({required this.label, required this.value});
+  const _SummaryRow({required this.label, required this.value, this.color, this.sub});
   final String label;
   final String value;
+  final Color? color;
+  /// Optional secondary text (e.g. the CDF rendering of a USD amount).
+  final String? sub;
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
+    final style = color != null ? text.bodyMedium?.copyWith(color: color, fontWeight: FontWeight.bold) : text.bodyMedium;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 3),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          Expanded(child: Text(label, style: text.bodyMedium)),
-          Text(value, style: text.bodyMedium),
+          Expanded(child: Text(label, style: style)),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(value, style: style),
+              if (sub != null)
+                Text(
+                  sub!,
+                  style: text.labelSmall?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
+                ),
+            ],
+          ),
         ],
+      ),
+    );
+  }
+}
+
+class _TipChip extends StatelessWidget {
+  const _TipChip({required this.label, required this.selected, required this.onTap});
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final text = Theme.of(context).textTheme;
+    return Material(
+      color: selected ? scheme.primaryContainer : scheme.surfaceContainerLowest,
+      borderRadius: TastyRadii.fullRadius,
+      child: InkWell(
+        borderRadius: TastyRadii.fullRadius,
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+          decoration: BoxDecoration(
+            borderRadius: TastyRadii.fullRadius,
+            border: Border.all(
+              color: selected ? scheme.primary : scheme.outlineVariant,
+              width: selected ? 2 : 1,
+            ),
+          ),
+          child: Text(
+            label,
+            style: text.labelLarge?.copyWith(
+              color: selected ? scheme.onPrimaryContainer : scheme.onSurface,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
       ),
     );
   }

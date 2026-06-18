@@ -2,6 +2,7 @@ import 'package:design_tokens/design_tokens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../state/cart_controller.dart';
 import 'rate_experience_screen.dart';
 
 /// `proof_of_delivery` — driver-side capture: photo, signature, or
@@ -148,6 +149,8 @@ class _ProofOfDeliveryScreenState extends State<ProofOfDeliveryScreen> {
               ),
               onPressed: () {
                 HapticFeedback.mediumImpact();
+                // Delivery completed → graduate the order to history.
+                CartController.instance.markActiveOrderReceived();
                 Navigator.of(context).pushReplacement(
                   MaterialPageRoute(builder: (_) => const RateExperienceScreen()),
                 );
