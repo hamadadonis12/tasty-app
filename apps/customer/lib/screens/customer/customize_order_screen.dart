@@ -204,11 +204,13 @@ class _CustomizeOrderScreenState extends State<CustomizeOrderScreen> {
                 ),
               ),
               SliverPadding(
-                padding: const EdgeInsets.fromLTRB(
+                // Bottom padding must clear the sticky Add bar + the device's
+                // bottom nav inset, or the last modifier option hides behind it.
+                padding: EdgeInsets.fromLTRB(
                   TastySpacing.marginPage,
                   TastySpacing.stackLg,
                   TastySpacing.marginPage,
-                  120,
+                  150 + MediaQuery.viewPaddingOf(context).bottom,
                 ),
                 sliver: SliverList(
                   delegate: SliverChildListDelegate([

@@ -42,6 +42,28 @@ class _RestaurantDetailScreenState extends State<RestaurantDetailScreen>
     super.dispose();
   }
 
+  /// Fixed 40px circular glass button for the hero app bar — identical to the
+  /// item detail screen so back/favorite look consistent and never balloon as
+  /// the SliverAppBar collapses.
+  Widget _circleButton(IconData icon, VoidCallback onPressed) {
+    return Padding(
+      padding: const EdgeInsets.all(8),
+      child: Material(
+        color: Colors.white.withValues(alpha: 0.95),
+        shape: const CircleBorder(),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onPressed,
+          child: SizedBox(
+            width: 40,
+            height: 40,
+            child: Icon(icon, size: 20, color: Colors.black87),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
@@ -57,18 +79,13 @@ class _RestaurantDetailScreenState extends State<RestaurantDetailScreen>
                 expandedHeight: 280,
                 backgroundColor: scheme.surface,
                 surfaceTintColor: Colors.transparent,
-                leading: CircleAvatar(
-                  backgroundColor: Colors.white.withValues(alpha: 0.9),
-                  child: BackButton(color: scheme.onSurface),
-                ),
+                leadingWidth: 56,
+                leading: _circleButton(Icons.arrow_back, () {
+                  HapticFeedback.lightImpact();
+                  Navigator.of(context).maybePop();
+                }),
                 actions: [
-                  CircleAvatar(
-                    backgroundColor: Colors.white.withValues(alpha: 0.9),
-                    child: IconButton(
-                      onPressed: HapticFeedback.lightImpact,
-                      icon: Icon(Icons.favorite_border, color: scheme.onSurface),
-                    ),
-                  ),
+                  _circleButton(Icons.favorite_border, HapticFeedback.lightImpact),
                   const SizedBox(width: TastySpacing.stackMd),
                 ],
                 flexibleSpace: FlexibleSpaceBar(
@@ -112,20 +129,22 @@ class _RestaurantDetailScreenState extends State<RestaurantDetailScreen>
                       Text('${_r.cuisine} · ${_r.district} · ${_r.priceLevel}',
                           style: text.bodyMedium?.copyWith(color: scheme.onSurfaceVariant)),
                       const SizedBox(height: TastySpacing.stackMd),
-                      Row(
+                      // Wrap (not Row) so the pills flow to a second line on
+                      // narrow screens instead of overflowing on the right.
+                      Wrap(
+                        spacing: TastySpacing.stackSm,
+                        runSpacing: TastySpacing.stackSm,
                         children: [
                           _StatPill(
                             icon: Icons.star_rounded,
                             label: '${_r.rating}',
                             sub: '(${_r.reviewCount})',
                           ),
-                          const SizedBox(width: TastySpacing.stackSm),
                           _StatPill(
                             icon: Icons.pedal_bike,
                             label: _r.etaRange,
                             sub: '',
                           ),
-                          const SizedBox(width: TastySpacing.stackSm),
                           _StatPill(
                             icon: Icons.account_balance_wallet_outlined,
                             label: '\$${_r.deliveryFee.toStringAsFixed(2)} fee',
@@ -168,7 +187,9 @@ class _RestaurantDetailScreenState extends State<RestaurantDetailScreen>
           Positioned(
             left: TastySpacing.marginPage,
             right: TastySpacing.marginPage,
-            bottom: 24,
+            // Lift above the device's bottom nav inset so the pill isn't
+            // hidden under the system navigation bar.
+            bottom: 24 + MediaQuery.viewPaddingOf(context).bottom,
             child: ListenableBuilder(
               listenable: CartController.instance,
               builder: (_, __) {
@@ -260,11 +281,12 @@ class _MenuList extends StatelessWidget {
     }
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(
+      // Clear the lifted bag pill (which now sits above the nav inset).
+      padding: EdgeInsets.fromLTRB(
         TastySpacing.marginPage,
         TastySpacing.stackLg,
         TastySpacing.marginPage,
-        140,
+        150 + MediaQuery.viewPaddingOf(context).bottom,
       ),
       children: [
         for (var s = 0; s < order.length; s++) ...[
