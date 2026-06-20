@@ -6,6 +6,7 @@ import '../../services/receipt_pdf.dart';
 import '../../state/cart_controller.dart';
 import 'cart_screen.dart';
 import 'live_order_tracking_screen.dart';
+import 'order_details_screen.dart';
 
 /// `order_history_reorder` — past orders grouped by status with one-tap
 /// reorder. Top tabs (Completed / Cancelled / Drafts), cards with
@@ -226,13 +227,24 @@ class _OrderCard extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
     return Container(
-      padding: const EdgeInsets.all(TastySpacing.gutterCard),
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: scheme.surfaceContainerLowest,
         borderRadius: TastyRadii.xlRadius,
         boxShadow: TastyShadows.ambient,
       ),
-      child: Column(
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {
+            HapticFeedback.lightImpact();
+            Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => OrderDetailsScreen(order: order)),
+            );
+          },
+          child: Padding(
+            padding: const EdgeInsets.all(TastySpacing.gutterCard),
+            child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
@@ -255,6 +267,7 @@ class _OrderCard extends StatelessWidget {
                   ],
                 ),
               ),
+              Icon(Icons.chevron_right, color: scheme.onSurfaceVariant),
             ],
           ),
           const SizedBox(height: 12),
@@ -358,6 +371,9 @@ class _OrderCard extends StatelessWidget {
             ],
           ),
         ],
+            ),
+          ),
+        ),
       ),
     );
   }

@@ -13,10 +13,23 @@ class ModifierGroup {
     required this.name,
     required this.options,
     this.required = false,
+    this.multiSelect = false,
+    this.maxSelect,
   });
   final String name;
   final List<ModifierOption> options;
+
+  /// Single-select groups (radios) with [required] true always keep one option
+  /// chosen. Ignored for [multiSelect] groups.
   final bool required;
+
+  /// When true the group renders as checkboxes — the customer can pick zero or
+  /// more add-ons, each adding its [ModifierOption.priceDelta] to the total.
+  final bool multiSelect;
+
+  /// Optional cap on how many options a [multiSelect] group accepts. Null = no
+  /// limit. Once the cap is hit, unchecked options disable.
+  final int? maxSelect;
 }
 
 @immutable
