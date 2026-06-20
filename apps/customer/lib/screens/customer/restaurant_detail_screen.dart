@@ -247,17 +247,46 @@ class _MenuList extends StatelessWidget {
   final Restaurant restaurant;
   @override
   Widget build(BuildContext context) {
-    return ListView.separated(
+    final text = Theme.of(context).textTheme;
+    final scheme = Theme.of(context).colorScheme;
+
+    // Group items into sections, preserving first-seen category order.
+    final order = <String>[];
+    final byCategory = <String, List<MenuItem>>{};
+    for (final item in restaurant.menu) {
+      final cat = item.category.isEmpty ? 'Menu' : item.category;
+      (byCategory[cat] ??= <MenuItem>[]).add(item);
+      if (!order.contains(cat)) order.add(cat);
+    }
+
+    return ListView(
       padding: const EdgeInsets.fromLTRB(
         TastySpacing.marginPage,
         TastySpacing.stackLg,
         TastySpacing.marginPage,
         140,
       ),
-      itemBuilder: (_, i) =>
-          _MenuItemTile(item: restaurant.menu[i], restaurant: restaurant),
-      separatorBuilder: (_, __) => const SizedBox(height: TastySpacing.gutterCard),
-      itemCount: restaurant.menu.length,
+      children: [
+        for (var s = 0; s < order.length; s++) ...[
+          if (s > 0) const SizedBox(height: TastySpacing.sectionGap),
+          Padding(
+            padding: const EdgeInsets.only(bottom: TastySpacing.stackMd),
+            child: Row(
+              children: [
+                Text(order[s], style: text.titleMedium),
+                const SizedBox(width: 8),
+                Text('${byCategory[order[s]]!.length}',
+                    style: text.labelMedium
+                        ?.copyWith(color: scheme.onSurfaceVariant)),
+              ],
+            ),
+          ),
+          for (final item in byCategory[order[s]]!) ...[
+            _MenuItemTile(item: item, restaurant: restaurant),
+            const SizedBox(height: TastySpacing.gutterCard),
+          ],
+        ],
+      ],
     );
   }
 }

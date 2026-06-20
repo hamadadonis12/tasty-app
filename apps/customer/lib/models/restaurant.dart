@@ -61,6 +61,7 @@ class RestaurantCatalog {
       menu: const [
         MenuItem(
           id: 'mk-poulet-moambe',
+          category: 'Signature Plates',
           name: 'Poulet Moambe',
           description: 'Palm-nut sauce, chikwangue, pondu',
           price: 12.50,
@@ -91,6 +92,7 @@ class RestaurantCatalog {
         ),
         MenuItem(
           id: 'mk-liboke-poisson',
+          category: 'Signature Plates',
           name: 'Liboke de Poisson',
           description: 'Tilapia in banana leaf, pondu, rice',
           price: 9.50,
@@ -99,6 +101,7 @@ class RestaurantCatalog {
         ),
         MenuItem(
           id: 'mk-capitaine-grille',
+          category: 'Grills',
           name: 'Capitaine Grillé',
           description: 'Grilled Nile perch, mashed plantains',
           price: 22.00,
@@ -106,6 +109,7 @@ class RestaurantCatalog {
         ),
         MenuItem(
           id: 'mk-bissap',
+          category: 'Drinks',
           name: 'Bissap Fraîche',
           description: 'Hibiscus drink, served chilled',
           price: 2.50,
@@ -129,6 +133,7 @@ class RestaurantCatalog {
       menu: const [
         MenuItem(
           id: 'lgp-truffle-burger',
+          category: 'Burgers',
           name: 'Truffle Mushroom Burger',
           description: 'Dry-aged beef patty, wild mushrooms, gruyère, truffle aioli',
           price: 18.50,
@@ -171,6 +176,7 @@ class RestaurantCatalog {
         ),
         MenuItem(
           id: 'lgp-ribeye',
+          category: 'From the Grill',
           name: 'Ribeye 300g',
           description: '40-day dry-aged, peppercorn jus, fries',
           price: 32.00,
@@ -178,6 +184,7 @@ class RestaurantCatalog {
         ),
         MenuItem(
           id: 'lgp-caesar',
+          category: 'Salads',
           name: 'Caesar Salad',
           description: 'Cos, parmigiano, anchovies, croutons',
           price: 9.50,
@@ -200,6 +207,7 @@ class RestaurantCatalog {
       menu: const [
         MenuItem(
           id: 'sl-dragon-roll',
+          category: 'Signature Rolls',
           name: 'Dragon Roll',
           description: 'Eel, avocado, cucumber, eel sauce',
           price: 16.00,
@@ -208,6 +216,7 @@ class RestaurantCatalog {
         ),
         MenuItem(
           id: 'sl-salmon-nigiri',
+          category: 'Nigiri & Sashimi',
           name: 'Salmon Nigiri (5 pcs)',
           description: 'Fresh Atlantic salmon, sushi rice',
           price: 14.00,
@@ -215,6 +224,7 @@ class RestaurantCatalog {
         ),
         MenuItem(
           id: 'sl-edamame',
+          category: 'Starters',
           name: 'Edamame',
           description: 'Sea-salt steamed pods',
           price: 4.50,
@@ -237,6 +247,7 @@ class RestaurantCatalog {
       menu: const [
         MenuItem(
           id: 'pn-margherita',
+          category: 'Pizze',
           name: 'Margherita Grande',
           description: 'San marzano, fior di latte, basil, EVOO',
           price: 14.00,
@@ -268,6 +279,7 @@ class RestaurantCatalog {
         ),
         MenuItem(
           id: 'pn-quattro-formaggi',
+          category: 'Pizze',
           name: 'Quattro Formaggi',
           description: 'Mozzarella, gorgonzola, parmesan, provola',
           price: 17.00,
@@ -275,6 +287,7 @@ class RestaurantCatalog {
         ),
         MenuItem(
           id: 'pn-tiramisu',
+          category: 'Dolci',
           name: 'Tiramisu',
           description: 'Mascarpone, espresso, cocoa',
           price: 6.00,
@@ -297,6 +310,7 @@ class RestaurantCatalog {
       menu: const [
         MenuItem(
           id: 'ml-bissap',
+          category: 'Drinks',
           name: 'Bissap Fraîche',
           description: 'Hibiscus, ginger, mint',
           price: 2.00,
@@ -304,6 +318,7 @@ class RestaurantCatalog {
         ),
         MenuItem(
           id: 'ml-plantains',
+          category: 'Sides',
           name: 'Plantains Frits',
           description: 'Crisp ripe plantain, pili-pili dust',
           price: 4.00,

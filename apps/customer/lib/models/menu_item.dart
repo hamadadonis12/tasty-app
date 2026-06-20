@@ -43,6 +43,7 @@ class MenuItem {
     this.badge,
     this.featured = false,
     this.modifiers = const [],
+    this.category = 'Menu',
   });
 
   final String id;
@@ -53,4 +54,9 @@ class MenuItem {
   final String? badge;
   final bool featured;
   final List<ModifierGroup> modifiers;
+
+  /// Section heading this item lives under on the restaurant page
+  /// (e.g. "Signature Plates", "Drinks"). Items sharing a category group
+  /// together under one labeled header.
+  final String category;
 }
