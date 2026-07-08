@@ -19,6 +19,7 @@ class Restaurant {
     required this.priceLevel,
     required this.menu,
     this.tags = const [],
+    this.freeDeliveryMinimum = 15.0,
   });
 
   final String id;
@@ -36,6 +37,8 @@ class Restaurant {
   final List<MenuItem> menu;
   /// Lowercased category tags used for category / search filtering.
   final List<String> tags;
+  /// Order subtotal (in USD) above which delivery is free for this restaurant.
+  final double freeDeliveryMinimum;
 
   String get etaRange => '$etaMinutes–${etaMinutes + 10} min';
 }
@@ -61,15 +64,38 @@ class RestaurantCatalog {
       menu: const [
         MenuItem(
           id: 'mk-poulet-moambe',
+          category: 'Signature Plates',
           name: 'Poulet Moambe',
           description: 'Palm-nut sauce, chikwangue, pondu',
           price: 12.50,
           image: 'https://images.unsplash.com/photo-1604908177453-7462950a6a3b?w=600&q=80',
           badge: '#1 THIS MONTH',
           featured: true,
+          modifiers: [
+            ModifierGroup(
+              name: 'Spice level',
+              required: true,
+              options: [
+                ModifierOption(name: 'Mild'),
+                ModifierOption(name: 'Medium'),
+                ModifierOption(name: 'Pili-pili hot'),
+              ],
+            ),
+            ModifierGroup(
+              name: 'Add sides',
+              multiSelect: true,
+              options: [
+                ModifierOption(name: 'Extra pondu', priceDelta: 2.00),
+                ModifierOption(name: 'Fufu', priceDelta: 1.50),
+                ModifierOption(name: 'Fried plantains', priceDelta: 2.00),
+                ModifierOption(name: 'Rice', priceDelta: 1.50),
+              ],
+            ),
+          ],
         ),
         MenuItem(
           id: 'mk-liboke-poisson',
+          category: 'Signature Plates',
           name: 'Liboke de Poisson',
           description: 'Tilapia in banana leaf, pondu, rice',
           price: 9.50,
@@ -78,6 +104,7 @@ class RestaurantCatalog {
         ),
         MenuItem(
           id: 'mk-capitaine-grille',
+          category: 'Grills',
           name: 'Capitaine Grillé',
           description: 'Grilled Nile perch, mashed plantains',
           price: 22.00,
@@ -85,6 +112,7 @@ class RestaurantCatalog {
         ),
         MenuItem(
           id: 'mk-bissap',
+          category: 'Drinks',
           name: 'Bissap Fraîche',
           description: 'Hibiscus drink, served chilled',
           price: 2.50,
@@ -108,6 +136,7 @@ class RestaurantCatalog {
       menu: const [
         MenuItem(
           id: 'lgp-truffle-burger',
+          category: 'Burgers',
           name: 'Truffle Mushroom Burger',
           description: 'Dry-aged beef patty, wild mushrooms, gruyère, truffle aioli',
           price: 18.50,
@@ -115,6 +144,15 @@ class RestaurantCatalog {
           badge: 'CHEF\'S PICK',
           featured: true,
           modifiers: [
+            ModifierGroup(
+              name: 'How would you like it cooked?',
+              required: true,
+              options: [
+                ModifierOption(name: 'Medium rare'),
+                ModifierOption(name: 'Medium'),
+                ModifierOption(name: 'Well done'),
+              ],
+            ),
             ModifierGroup(
               name: 'Choose your side',
               required: true,
@@ -125,10 +163,23 @@ class RestaurantCatalog {
                 ModifierOption(name: 'Onion Rings', priceDelta: 1.50),
               ],
             ),
+            ModifierGroup(
+              name: 'Add extras',
+              multiSelect: true,
+              maxSelect: 4,
+              options: [
+                ModifierOption(name: 'Smoked bacon', priceDelta: 2.00),
+                ModifierOption(name: 'Extra gruyère', priceDelta: 1.50),
+                ModifierOption(name: 'Fried egg', priceDelta: 1.00),
+                ModifierOption(name: 'Avocado', priceDelta: 1.50),
+                ModifierOption(name: 'Caramelised onions', priceDelta: 1.00),
+              ],
+            ),
           ],
         ),
         MenuItem(
           id: 'lgp-ribeye',
+          category: 'From the Grill',
           name: 'Ribeye 300g',
           description: '40-day dry-aged, peppercorn jus, fries',
           price: 32.00,
@@ -136,6 +187,7 @@ class RestaurantCatalog {
         ),
         MenuItem(
           id: 'lgp-caesar',
+          category: 'Salads',
           name: 'Caesar Salad',
           description: 'Cos, parmigiano, anchovies, croutons',
           price: 9.50,
@@ -158,6 +210,7 @@ class RestaurantCatalog {
       menu: const [
         MenuItem(
           id: 'sl-dragon-roll',
+          category: 'Signature Rolls',
           name: 'Dragon Roll',
           description: 'Eel, avocado, cucumber, eel sauce',
           price: 16.00,
@@ -166,6 +219,7 @@ class RestaurantCatalog {
         ),
         MenuItem(
           id: 'sl-salmon-nigiri',
+          category: 'Nigiri & Sashimi',
           name: 'Salmon Nigiri (5 pcs)',
           description: 'Fresh Atlantic salmon, sushi rice',
           price: 14.00,
@@ -173,6 +227,7 @@ class RestaurantCatalog {
         ),
         MenuItem(
           id: 'sl-edamame',
+          category: 'Starters',
           name: 'Edamame',
           description: 'Sea-salt steamed pods',
           price: 4.50,
@@ -195,14 +250,39 @@ class RestaurantCatalog {
       menu: const [
         MenuItem(
           id: 'pn-margherita',
+          category: 'Pizze',
           name: 'Margherita Grande',
           description: 'San marzano, fior di latte, basil, EVOO',
           price: 14.00,
           image: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=600&q=80',
           featured: true,
+          modifiers: [
+            ModifierGroup(
+              name: 'Size',
+              required: true,
+              options: [
+                ModifierOption(name: 'Medium (30cm)'),
+                ModifierOption(name: 'Large (36cm)', priceDelta: 4.00),
+                ModifierOption(name: 'Family (45cm)', priceDelta: 8.00),
+              ],
+            ),
+            ModifierGroup(
+              name: 'Extra toppings',
+              multiSelect: true,
+              maxSelect: 5,
+              options: [
+                ModifierOption(name: 'Mushrooms', priceDelta: 1.50),
+                ModifierOption(name: 'Spicy salami', priceDelta: 2.00),
+                ModifierOption(name: 'Extra mozzarella', priceDelta: 2.00),
+                ModifierOption(name: 'Black olives', priceDelta: 1.00),
+                ModifierOption(name: 'Fresh rocket', priceDelta: 1.00),
+              ],
+            ),
+          ],
         ),
         MenuItem(
           id: 'pn-quattro-formaggi',
+          category: 'Pizze',
           name: 'Quattro Formaggi',
           description: 'Mozzarella, gorgonzola, parmesan, provola',
           price: 17.00,
@@ -210,6 +290,7 @@ class RestaurantCatalog {
         ),
         MenuItem(
           id: 'pn-tiramisu',
+          category: 'Dolci',
           name: 'Tiramisu',
           description: 'Mascarpone, espresso, cocoa',
           price: 6.00,
@@ -232,6 +313,7 @@ class RestaurantCatalog {
       menu: const [
         MenuItem(
           id: 'ml-bissap',
+          category: 'Drinks',
           name: 'Bissap Fraîche',
           description: 'Hibiscus, ginger, mint',
           price: 2.00,
@@ -239,6 +321,7 @@ class RestaurantCatalog {
         ),
         MenuItem(
           id: 'ml-plantains',
+          category: 'Sides',
           name: 'Plantains Frits',
           description: 'Crisp ripe plantain, pili-pili dust',
           price: 4.00,

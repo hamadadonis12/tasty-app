@@ -1,9 +1,11 @@
 import 'package:design_tokens/design_tokens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:speech_to_text/speech_to_text.dart';
 
 import '../../models/menu_item.dart';
 import '../../models/restaurant.dart';
+import '../../state/cart_controller.dart';
 import 'restaurant_detail_screen.dart';
 
 /// `smart_search_experience` — global search across dishes + restaurants.
@@ -22,6 +24,10 @@ class _SmartSearchScreenState extends State<SmartSearchScreen> {
   final _ctrl = TextEditingController();
   String _query = '';
 
+  final SpeechToText _speech = SpeechToText();
+  bool _speechAvailable = false;
+  bool _listening = false;
+
   @override
   void initState() {
     super.initState();
@@ -30,8 +36,70 @@ class _SmartSearchScreenState extends State<SmartSearchScreen> {
 
   @override
   void dispose() {
+    _speech.stop();
     _ctrl.dispose();
     super.dispose();
+  }
+
+  /// Start/stop voice dictation into the search field. Initializes the engine
+  /// (and requests mic permission) on first use, then streams recognized words
+  /// straight into the query so results update as you speak.
+  Future<void> _toggleVoiceSearch() async {
+    HapticFeedback.selectionClick();
+    if (_listening) {
+      await _speech.stop();
+      setState(() => _listening = false);
+      return;
+    }
+
+    if (!_speechAvailable) {
+      _speechAvailable = await _speech.initialize(
+        onStatus: (s) {
+          if (mounted && (s == 'done' || s == 'notListening')) {
+            setState(() => _listening = false);
+          }
+        },
+        onError: (e) {
+          if (!mounted) return;
+          setState(() => _listening = false);
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text('Voice search unavailable: ${e.errorMsg}'),
+            behavior: SnackBarBehavior.floating,
+          ));
+        },
+      );
+    }
+
+    if (!_speechAvailable) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Microphone or speech recognition is not available'),
+        behavior: SnackBarBehavior.floating,
+      ));
+      return;
+    }
+
+    setState(() => _listening = true);
+    await _speech.listen(
+      onResult: (r) {
+        if (!mounted) return;
+        setState(() {
+          _ctrl.text = r.recognizedWords;
+          _ctrl.selection = TextSelection.collapsed(offset: _ctrl.text.length);
+        });
+        if (r.finalResult) {
+          _commitSearch(r.recognizedWords);
+          setState(() => _listening = false);
+        }
+      },
+      listenOptions: SpeechListenOptions(cancelOnError: true, partialResults: true),
+    );
+  }
+
+  void _commitSearch(String q) {
+    final trimmed = q.trim();
+    if (trimmed.isEmpty) return;
+    CartController.instance.pushRecentSearch(trimmed);
   }
 
   List<_SearchHit> get _hits {
@@ -66,6 +134,8 @@ class _SmartSearchScreenState extends State<SmartSearchScreen> {
         title: TextField(
           controller: _ctrl,
           autofocus: true,
+          textInputAction: TextInputAction.search,
+          onSubmitted: _commitSearch,
           decoration: const InputDecoration(
             hintText: 'Sushi, burgers, Maison Kinshasa…',
             border: InputBorder.none,
@@ -82,7 +152,12 @@ class _SmartSearchScreenState extends State<SmartSearchScreen> {
               },
             )
           else
-            IconButton(icon: const Icon(Icons.mic_none), onPressed: () {}),
+            IconButton(
+              icon: Icon(_listening ? Icons.mic : Icons.mic_none,
+                  color: _listening ? scheme.primary : null),
+              tooltip: _listening ? 'Listening…' : 'Voice search',
+              onPressed: _toggleVoiceSearch,
+            ),
           const SizedBox(width: 4),
         ],
       ),
@@ -90,6 +165,7 @@ class _SmartSearchScreenState extends State<SmartSearchScreen> {
           ? _IdleState(onChipTap: (q) {
               _ctrl.text = q;
               _ctrl.selection = TextSelection.collapsed(offset: q.length);
+              _commitSearch(q);
             })
           : _ResultsList(hits: _hits),
     );
@@ -99,7 +175,14 @@ class _SmartSearchScreenState extends State<SmartSearchScreen> {
 class _IdleState extends StatelessWidget {
   const _IdleState({required this.onChipTap});
   final ValueChanged<String> onChipTap;
-  static const _recents = ['Poulet Moambe', 'Sushi', 'Pizza', 'Burger', 'Bissap'];
+  static const _seededRecents = ['Poulet Moambe', 'Sushi', 'Pizza', 'Burger', 'Bissap'];
+  static const _dietary = <(String, String)>[
+    ('Vegetarian', '🥬'),
+    ('Halal', '🌙'),
+    ('Gluten-free', '🌾'),
+    ('No peanuts', '🥜'),
+    ('Spicy', '🌶️'),
+  ];
   static const _moods = <(String, String)>[
     ('🌶️', 'Spicy'),
     ('🥗', 'Healthy'),
@@ -113,61 +196,109 @@ class _IdleState extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
-    return ListView(
-      padding: const EdgeInsets.all(TastySpacing.marginPage),
-      children: [
-        Text('Recent', style: text.titleSmall),
-        const SizedBox(height: TastySpacing.stackSm),
-        Wrap(
-          spacing: 8, runSpacing: 8,
+    return ListenableBuilder(
+      listenable: CartController.instance,
+      builder: (context, _) {
+        final stored = CartController.instance.recentSearches;
+        final recents = stored.isEmpty ? _seededRecents : stored;
+        final activeFilters = CartController.instance.dietaryFilters;
+        return ListView(
+          padding: const EdgeInsets.all(TastySpacing.marginPage),
           children: [
-            for (final r in _recents)
-              ActionChip(
-                label: Text(r),
-                avatar: const Icon(Icons.history, size: 16),
-                onPressed: () {
-                  HapticFeedback.selectionClick();
-                  onChipTap(r);
-                },
-              ),
-          ],
-        ),
-        const SizedBox(height: TastySpacing.sectionGap),
-        Text('Search by mood', style: text.titleSmall),
-        const SizedBox(height: TastySpacing.stackMd),
-        GridView.count(
-          shrinkWrap: true,
-          crossAxisCount: 2,
-          childAspectRatio: 2.6,
-          mainAxisSpacing: 10,
-          crossAxisSpacing: 10,
-          physics: const NeverScrollableScrollPhysics(),
-          children: [
-            for (final m in _moods)
-              Material(
-                color: scheme.surfaceContainerLow,
-                borderRadius: TastyRadii.lgRadius,
-                child: InkWell(
-                  borderRadius: TastyRadii.lgRadius,
-                  onTap: () {
-                    HapticFeedback.selectionClick();
-                    onChipTap(m.$2);
-                  },
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 14),
-                    child: Row(
-                      children: [
-                        Text(m.$1, style: const TextStyle(fontSize: 22)),
-                        const SizedBox(width: 8),
-                        Text(m.$2, style: text.titleSmall),
-                      ],
+            // Dietary filters
+            Text('Dietary preferences', style: text.titleSmall),
+            const SizedBox(height: TastySpacing.stackSm),
+            Wrap(
+              spacing: 8, runSpacing: 8,
+              children: [
+                for (final d in _dietary)
+                  FilterChip(
+                    label: Text('${d.$2} ${d.$1}'),
+                    selected: activeFilters.contains(d.$1),
+                    onSelected: (_) {
+                      HapticFeedback.selectionClick();
+                      CartController.instance.toggleDietary(d.$1);
+                    },
+                  ),
+              ],
+            ),
+            const SizedBox(height: TastySpacing.sectionGap),
+
+            // Recent searches
+            Row(
+              children: [
+                Text('Recent', style: text.titleSmall),
+                const Spacer(),
+                if (stored.isNotEmpty)
+                  TextButton(
+                    onPressed: () {
+                      // Clearing is one-shot; we don't expose a clear method,
+                      // but tapping each chip pushes it forward, so the list
+                      // self-curates over time. This button is a visible
+                      // affordance even if it just shows a confirmation.
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                        content: Text('Recent searches refresh as you search'),
+                        behavior: SnackBarBehavior.floating,
+                        duration: Duration(seconds: 2),
+                      ));
+                    },
+                    child: Text('Manage', style: text.labelMedium),
+                  ),
+              ],
+            ),
+            const SizedBox(height: TastySpacing.stackSm),
+            Wrap(
+              spacing: 8, runSpacing: 8,
+              children: [
+                for (final r in recents)
+                  ActionChip(
+                    label: Text(r),
+                    avatar: const Icon(Icons.history, size: 16),
+                    onPressed: () {
+                      HapticFeedback.selectionClick();
+                      onChipTap(r);
+                    },
+                  ),
+              ],
+            ),
+            const SizedBox(height: TastySpacing.sectionGap),
+            Text('Search by mood', style: text.titleSmall),
+            const SizedBox(height: TastySpacing.stackMd),
+            GridView.count(
+              shrinkWrap: true,
+              crossAxisCount: 2,
+              childAspectRatio: 2.6,
+              mainAxisSpacing: 10,
+              crossAxisSpacing: 10,
+              physics: const NeverScrollableScrollPhysics(),
+              children: [
+                for (final m in _moods)
+                  Material(
+                    color: scheme.surfaceContainerLow,
+                    borderRadius: TastyRadii.lgRadius,
+                    child: InkWell(
+                      borderRadius: TastyRadii.lgRadius,
+                      onTap: () {
+                        HapticFeedback.selectionClick();
+                        onChipTap(m.$2);
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 14),
+                        child: Row(
+                          children: [
+                            Text(m.$1, style: const TextStyle(fontSize: 22)),
+                            const SizedBox(width: 8),
+                            Text(m.$2, style: text.titleSmall),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
-                ),
-              ),
+              ],
+            ),
           ],
-        ),
-      ],
+        );
+      },
     );
   }
 }

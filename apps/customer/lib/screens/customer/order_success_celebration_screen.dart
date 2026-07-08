@@ -117,6 +117,44 @@ class _OrderSuccessCelebrationScreenState
                         style: text.bodyLarge?.copyWith(color: scheme.onSurfaceVariant),
                       );
                     }),
+                    const SizedBox(height: TastySpacing.stackMd),
+                    // 10-min late guarantee (PRD FR-C-034).
+                    Center(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: TastyColors.successContainer,
+                          borderRadius: TastyRadii.fullRadius,
+                          border: Border.all(color: TastyColors.success.withValues(alpha: 0.35)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.verified, size: 16, color: TastyColors.onSuccessContainer),
+                            const SizedBox(width: 6),
+                            Text(
+                              'On-time guarantee · 10 min late → auto credit',
+                              style: text.labelMedium?.copyWith(
+                                color: TastyColors.onSuccessContainer,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    Builder(builder: (_) {
+                      final order = CartController.instance.activeOrder;
+                      if (order?.contactless != true) return const SizedBox.shrink();
+                      return Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: Text(
+                          '🚪 Contactless delivery — driver will leave at your door',
+                          textAlign: TextAlign.center,
+                          style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+                        ),
+                      );
+                    }),
                     const SizedBox(height: TastySpacing.sectionGap),
                     Builder(builder: (_) {
                       final order = CartController.instance.activeOrder;
@@ -138,10 +176,17 @@ class _OrderSuccessCelebrationScreenState
                         child: Column(
                           children: [
                             _SummaryRow(label: 'Order #', value: orderId),
+                            _SummaryRow(
+                              label: 'Delivery PIN (Show to Driver)',
+                              value: order?.verificationPin ?? '8427',
+                              emphasis: true,
+                            ),
                             const Divider(height: 24),
                             _SummaryRow(label: 'Subtotal', value: '\$${subtotal.toStringAsFixed(2)}'),
                             _SummaryRow(label: 'Delivery', value: '\$${delivery.toStringAsFixed(2)}'),
                             _SummaryRow(label: 'Service fee', value: '\$${service.toStringAsFixed(2)}'),
+                            if ((order?.tip ?? 0) > 0)
+                              _SummaryRow(label: 'Driver tip', value: '\$${(order!.tip).toStringAsFixed(2)}'),
                             const Divider(height: 24),
                             _SummaryRow(
                               label: 'Total · $payment',
@@ -221,7 +266,7 @@ class _ConfettiPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final rng = math.Random(7);
     final paint = Paint();
-    for (int i = 0; i < 32; i++) {
+    for (int i = 0; i < 14; i++) {
       final x = rng.nextDouble() * size.width;
       final yStart = -20.0 - rng.nextDouble() * 80;
       final fall = (progress + i * 0.07) % 1.0;

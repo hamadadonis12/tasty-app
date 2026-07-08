@@ -21,7 +21,9 @@ class CustomizeOrderScreen extends StatefulWidget {
 
 class _CustomizeOrderScreenState extends State<CustomizeOrderScreen> {
   late final MenuItem _item;
-  late final List<int> _selectedByGroup; // one selected option index per modifier group
+  // One set of selected option indices per modifier group. Single-select groups
+  // hold exactly one index; multi-select groups hold zero or more.
+  late final List<Set<int>> _selections;
   int _quantity = 1;
 
   @override
@@ -32,14 +34,19 @@ class _CustomizeOrderScreenState extends State<CustomizeOrderScreen> {
         RestaurantCatalog.byId('le-grill-premium').menu.firstWhere(
               (m) => m.id == 'lgp-truffle-burger',
             );
-    _selectedByGroup = List<int>.filled(_item.modifiers.length, 0);
+    // Single-select groups default to the first option (a radio always has one
+    // chosen); multi-select groups start empty.
+    _selections = [
+      for (final g in _item.modifiers) g.multiSelect ? <int>{} : <int>{0},
+    ];
   }
 
   double get _unitPrice {
     var p = _item.price;
     for (var g = 0; g < _item.modifiers.length; g++) {
-      final opt = _item.modifiers[g].options[_selectedByGroup[g]];
-      p += opt.priceDelta;
+      for (final i in _selections[g]) {
+        p += _item.modifiers[g].options[i].priceDelta;
+      }
     }
     return p;
   }
@@ -48,10 +55,118 @@ class _CustomizeOrderScreenState extends State<CustomizeOrderScreen> {
     if (_item.modifiers.isEmpty) return '';
     final parts = <String>[];
     for (var g = 0; g < _item.modifiers.length; g++) {
-      final opt = _item.modifiers[g].options[_selectedByGroup[g]];
-      parts.add('${_item.modifiers[g].name}: ${opt.name}');
+      final sel = _selections[g];
+      if (sel.isEmpty) continue;
+      final names =
+          sel.map((i) => _item.modifiers[g].options[i].name).join(', ');
+      parts.add('${_item.modifiers[g].name}: $names');
     }
     return parts.join(' · ');
+  }
+
+  String _deltaLabel(double d) =>
+      d == 0 ? '+ \$0.00' : '+ \$${d.toStringAsFixed(2)}';
+
+  String _groupHint(ModifierGroup g) {
+    if (!g.multiSelect) return 'Select 1 option';
+    if (g.maxSelect != null) return 'Choose up to ${g.maxSelect}';
+    return 'Add as many as you like';
+  }
+
+  /// Builds one modifier group: a header + hint + either radio rows
+  /// (single-select) or checkbox rows (multi-select, with optional cap).
+  List<Widget> _buildModifierGroup(int g, TextTheme text, ColorScheme scheme) {
+    final grp = _item.modifiers[g];
+    final sel = _selections[g];
+    final isRequired = grp.required && !grp.multiSelect;
+    final atCap = grp.maxSelect != null && sel.length >= grp.maxSelect!;
+    return [
+      const SizedBox(height: TastySpacing.sectionGap),
+      Row(
+        children: [
+          Expanded(child: Text(grp.name, style: text.titleSmall)),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: isRequired ? scheme.primary : scheme.surfaceContainerHighest,
+              borderRadius: TastyRadii.fullRadius,
+            ),
+            child: Text(
+              isRequired ? 'Required' : 'Optional',
+              style: text.labelSmall?.copyWith(
+                color: isRequired ? scheme.onPrimary : scheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+        ],
+      ),
+      Text(_groupHint(grp),
+          style: text.labelMedium?.copyWith(color: scheme.onSurfaceVariant)),
+      const SizedBox(height: 6),
+      if (grp.multiSelect)
+        for (var i = 0; i < grp.options.length; i++)
+          CheckboxListTile(
+            value: sel.contains(i),
+            // Disable unchecked options once the cap is reached.
+            onChanged: (!sel.contains(i) && atCap)
+                ? null
+                : (v) {
+                    HapticFeedback.selectionClick();
+                    setState(() {
+                      if (v ?? false) {
+                        sel.add(i);
+                      } else {
+                        sel.remove(i);
+                      }
+                    });
+                  },
+            title: Text(grp.options[i].name),
+            secondary: Text(_deltaLabel(grp.options[i].priceDelta)),
+            contentPadding: EdgeInsets.zero,
+            // Keep the control on the left to match the radio rows above.
+            controlAffinity: ListTileControlAffinity.leading,
+            activeColor: scheme.primary,
+          )
+      else
+        for (var i = 0; i < grp.options.length; i++)
+          RadioListTile<int>(
+            value: i,
+            groupValue: sel.isEmpty ? -1 : sel.first,
+            onChanged: (v) {
+              HapticFeedback.selectionClick();
+              setState(() => sel
+                ..clear()
+                ..add(v ?? 0));
+            },
+            title: Text(grp.options[i].name),
+            secondary: Text(_deltaLabel(grp.options[i].priceDelta)),
+            contentPadding: EdgeInsets.zero,
+            controlAffinity: ListTileControlAffinity.leading,
+            activeColor: scheme.primary,
+          ),
+    ];
+  }
+
+  /// A fixed 40px circular glass button for the hero app bar. Stays the same
+  /// size whether the SliverAppBar is expanded or collapsed (the old
+  /// CircleAvatar ballooned to fill the toolbar slot on scroll).
+  Widget _circleButton(IconData icon, VoidCallback onPressed) {
+    return Padding(
+      padding: const EdgeInsets.all(8),
+      child: Material(
+        color: Colors.white.withValues(alpha: 0.95),
+        shape: const CircleBorder(),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onPressed,
+          child: SizedBox(
+            width: 40,
+            height: 40,
+            child: Icon(icon, size: 20, color: Colors.black87),
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -71,18 +186,13 @@ class _CustomizeOrderScreenState extends State<CustomizeOrderScreen> {
                 expandedHeight: 320,
                 backgroundColor: scheme.surface,
                 surfaceTintColor: Colors.transparent,
-                leading: CircleAvatar(
-                  backgroundColor: Colors.white.withValues(alpha: 0.95),
-                  child: const BackButton(),
-                ),
+                leadingWidth: 56,
+                leading: _circleButton(Icons.arrow_back, () {
+                  HapticFeedback.lightImpact();
+                  Navigator.of(context).maybePop();
+                }),
                 actions: [
-                  CircleAvatar(
-                    backgroundColor: Colors.white.withValues(alpha: 0.95),
-                    child: IconButton(
-                      icon: const Icon(Icons.favorite_border),
-                      onPressed: HapticFeedback.lightImpact,
-                    ),
-                  ),
+                  _circleButton(Icons.favorite_border, HapticFeedback.lightImpact),
                   const SizedBox(width: TastySpacing.stackMd),
                 ],
                 flexibleSpace: FlexibleSpaceBar(
@@ -94,11 +204,13 @@ class _CustomizeOrderScreenState extends State<CustomizeOrderScreen> {
                 ),
               ),
               SliverPadding(
-                padding: const EdgeInsets.fromLTRB(
+                // Bottom padding must clear the sticky Add bar + the device's
+                // bottom nav inset, or the last modifier option hides behind it.
+                padding: EdgeInsets.fromLTRB(
                   TastySpacing.marginPage,
                   TastySpacing.stackLg,
                   TastySpacing.marginPage,
-                  120,
+                  150 + MediaQuery.viewPaddingOf(context).bottom,
                 ),
                 sliver: SliverList(
                   delegate: SliverChildListDelegate([
@@ -140,44 +252,8 @@ class _CustomizeOrderScreenState extends State<CustomizeOrderScreen> {
                         ),
                       ),
                     ],
-                    for (var g = 0; g < _item.modifiers.length; g++) ...[
-                      const SizedBox(height: TastySpacing.sectionGap),
-                      Row(
-                        children: [
-                          Text(_item.modifiers[g].name, style: text.titleSmall),
-                          const Spacer(),
-                          if (_item.modifiers[g].required)
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                              decoration: BoxDecoration(
-                                color: scheme.primary,
-                                borderRadius: TastyRadii.fullRadius,
-                              ),
-                              child: Text('Required',
-                                  style: text.labelSmall?.copyWith(color: scheme.onPrimary)),
-                            ),
-                        ],
-                      ),
-                      Text('Select 1 option', style: text.labelMedium),
-                      const SizedBox(height: 6),
-                      for (var i = 0; i < _item.modifiers[g].options.length; i++)
-                        RadioListTile<int>(
-                          value: i,
-                          groupValue: _selectedByGroup[g],
-                          onChanged: (v) {
-                            HapticFeedback.selectionClick();
-                            setState(() => _selectedByGroup[g] = v ?? 0);
-                          },
-                          title: Text(_item.modifiers[g].options[i].name),
-                          secondary: Text(
-                            _item.modifiers[g].options[i].priceDelta == 0
-                                ? '+ \$0.00'
-                                : '+ \$${_item.modifiers[g].options[i].priceDelta.toStringAsFixed(2)}',
-                          ),
-                          contentPadding: EdgeInsets.zero,
-                          activeColor: scheme.primary,
-                        ),
-                    ],
+                    for (var g = 0; g < _item.modifiers.length; g++)
+                      ..._buildModifierGroup(g, text, scheme),
                   ]),
                 ),
               ),
@@ -258,14 +334,14 @@ class _CustomizeOrderScreenState extends State<CustomizeOrderScreen> {
                           padding: const EdgeInsets.symmetric(vertical: 14),
                         ),
                         child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const Text('Add to Cart'),
-                            const Spacer(),
-                            AnimatedSwitcher(
-                              duration: TastyMotion.durationSm,
-                              child: Text('\$${total.toStringAsFixed(2)}',
-                                  key: ValueKey(total),
-                                  style: text.titleSmall?.copyWith(color: scheme.onPrimaryContainer)),
+                            Text(
+                              'Add to Cart  ·  \$${total.toStringAsFixed(2)}',
+                              style: text.titleSmall?.copyWith(
+                                color: scheme.onPrimaryContainer,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ],
                         ),

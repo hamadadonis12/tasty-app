@@ -1,6 +1,7 @@
 import 'package:design_tokens/design_tokens.dart';
 import 'package:flutter/material.dart';
 
+import 'state/app_state.dart';
 import 'screens/customer/delivery_address_setup_screen.dart';
 import 'screens/customer/home_shell.dart';
 import 'screens/customer/login_verification_screen.dart';
@@ -23,12 +24,18 @@ class CustomerApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'TastyLife',
-      debugShowCheckedModeBanner: false,
-      theme: TastyTheme.lightTheme,
-      darkTheme: TastyTheme.darkTheme,
-      home: const OnboardingFlow(),
+    // Rebuild the whole app when the customer changes the theme preference in
+    // Appearance settings, so light/dark/system switches take effect live.
+    return ListenableBuilder(
+      listenable: AppState.instance,
+      builder: (context, _) => MaterialApp(
+        title: 'TastyLife',
+        debugShowCheckedModeBanner: false,
+        theme: TastyTheme.lightTheme,
+        darkTheme: TastyTheme.darkTheme,
+        themeMode: AppState.instance.themeMode,
+        home: const OnboardingFlow(),
+      ),
     );
   }
 }
@@ -53,7 +60,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   @override
   Widget build(BuildContext context) {
     final child = switch (_step) {
-      0 => SplashScreen1(onContinue: _next),
+      0 => SplashScreen1(onContinue: _next, onSkip: _signIn),
       1 => SplashScreen2(onContinue: _next, onSignIn: _signIn),
       2 => SelectLanguageScreen(onContinue: _next),
       3 => PermissionsOnboardingScreen(onContinue: _next, onSkip: _next),

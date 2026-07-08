@@ -15,17 +15,12 @@ class KinshasaLuxeScreen extends StatelessWidget {
       backgroundColor: scheme.surface,
       body: CustomScrollView(
         slivers: [
-          SliverAppBar(
-            pinned: true,
-            expandedHeight: 280,
-            leading: CircleAvatar(
-              backgroundColor: Colors.white.withValues(alpha: 0.9),
-              child: BackButton(color: scheme.onSurface),
-            ),
-            backgroundColor: scheme.surface,
-            surfaceTintColor: Colors.transparent,
-            flexibleSpace: FlexibleSpaceBar(
-              background: Stack(
+          // Hero header — a plain Stack (no SliverAppBar/FlexibleSpaceBar,
+          // which was crashing layout on this screen).
+          SliverToBoxAdapter(
+            child: SizedBox(
+              height: 280,
+              child: Stack(
                 fit: StackFit.expand,
                 children: [
                   Image.network(
@@ -33,12 +28,27 @@ class KinshasaLuxeScreen extends StatelessWidget {
                     fit: BoxFit.cover,
                     errorBuilder: (_, __, ___) => Container(color: scheme.surfaceContainer),
                   ),
-                  const DecoratedBox(
+                  DecoratedBox(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
-                        colors: [Color(0x33000000), Color(0xEEFCF9F8)],
+                        colors: [
+                          Colors.black.withValues(alpha: 0.25),
+                          scheme.surface,
+                        ],
+                      ),
+                    ),
+                  ),
+                  SafeArea(
+                    child: Align(
+                      alignment: Alignment.topLeft,
+                      child: Padding(
+                        padding: const EdgeInsets.all(8),
+                        child: CircleAvatar(
+                          backgroundColor: Colors.white.withValues(alpha: 0.9),
+                          child: BackButton(color: scheme.onSurface),
+                        ),
                       ),
                     ),
                   ),
@@ -117,28 +127,28 @@ class KinshasaLuxeScreen extends StatelessWidget {
                       borderRadius: TastyRadii.xxlRadius,
                       boxShadow: TastyShadows.glow,
                     ),
-                    child: Row(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('Try 30 days free',
-                                  style: text.titleMedium?.copyWith(color: Colors.white)),
-                              Text('Then 32 000 FC / month · cancel anytime',
-                                  style: text.bodySmall?.copyWith(
-                                      color: Colors.white.withValues(alpha: 0.85))),
-                            ],
+                        Text('Try 30 days free',
+                            style: text.titleMedium?.copyWith(color: Colors.white)),
+                        const SizedBox(height: 4),
+                        Text('Then 32 000 FC / month · cancel anytime',
+                            style: text.bodySmall?.copyWith(
+                                color: Colors.white.withValues(alpha: 0.85))),
+                        const SizedBox(height: TastySpacing.stackMd),
+                        SizedBox(
+                          width: double.infinity,
+                          child: FilledButton(
+                            onPressed: () {},
+                            style: FilledButton.styleFrom(
+                              backgroundColor: Colors.white,
+                              foregroundColor: scheme.primary,
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                            ),
+                            child: const Text('Start free trial'),
                           ),
                         ),
-                        FilledButton(
-                          onPressed: () {},
-                          style: FilledButton.styleFrom(
-                            backgroundColor: Colors.white,
-                            foregroundColor: scheme.primary,
-                          ),
-                          child: const Text('Start'),
-                        )
                       ],
                     ),
                   ),

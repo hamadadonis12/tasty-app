@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 
 import '../../models/restaurant.dart';
 import 'restaurant_detail_screen.dart';
+import 'smart_search_screen.dart';
 
 /// `explore_categories` from the Stitch reference.
 ///
@@ -37,7 +38,15 @@ class ExploreCategoriesScreen extends StatelessWidget {
         title: const Text('Explore'),
         leading: const BackButton(),
         actions: [
-          IconButton(onPressed: () {}, icon: const Icon(Icons.search)),
+          IconButton(
+            onPressed: () {
+              HapticFeedback.lightImpact();
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const SmartSearchScreen()),
+              );
+            },
+            icon: const Icon(Icons.search),
+          ),
           const SizedBox(width: 4),
         ],
       ),

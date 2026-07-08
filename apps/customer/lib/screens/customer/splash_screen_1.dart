@@ -9,9 +9,13 @@ import 'package:flutter/material.dart';
 /// soft "loading" pulse. Used for cold start; auto-advances after ~1.4s
 /// when [onContinue] is provided (production flow). In the gallery the
 /// callback is `null`, so it stays put as a preview.
+///
+/// [onSkip] (if provided) renders a "Skip onboarding" button in the
+/// bottom-right so returning users / demos can jump straight to home.
 class SplashScreen1 extends StatefulWidget {
-  const SplashScreen1({super.key, this.onContinue});
+  const SplashScreen1({super.key, this.onContinue, this.onSkip});
   final VoidCallback? onContinue;
+  final VoidCallback? onSkip;
 
   @override
   State<SplashScreen1> createState() => _SplashScreen1State();
@@ -83,6 +87,26 @@ class _SplashScreen1State extends State<SplashScreen1> {
               ),
             ),
           ),
+          if (widget.onSkip != null)
+            Positioned(
+              top: 16,
+              right: 16,
+              child: SafeArea(
+                child: TextButton(
+                  onPressed: () {
+                    _advance?.cancel();
+                    widget.onSkip!.call();
+                  },
+                  child: Text(
+                    'Skip →',
+                    style: text.labelLarge?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );

@@ -1,15 +1,47 @@
 import 'package:design_tokens/design_tokens.dart';
 import 'package:flutter/material.dart';
 
+import '../../state/app_state.dart';
+import '../../state/cart_controller.dart';
+import 'appearance_settings_screen.dart';
 import 'coupon_wallet_screen.dart';
 import 'delivery_address_setup_screen.dart';
+import 'edit_profile_screen.dart';
 import 'help_support_screen.dart';
 import 'kinshasa_luxe_screen.dart';
+import 'language_settings_screen.dart';
+import 'legal_screen.dart';
 import 'loyalty_rewards_screen.dart';
 import 'my_favorites_screen.dart';
 import 'notifications_screen.dart';
 import 'order_history_screen.dart';
+import 'profile_photo_picker.dart';
+import 'settings_screen.dart';
 import 'wallet_payments_screen.dart';
+
+void _confirmLogout(BuildContext context) async {
+  final ok = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const Text('Log out?'),
+      content: const Text('You will need to sign in again to place orders.'),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+        FilledButton(
+          onPressed: () => Navigator.pop(ctx, true),
+          child: const Text('Log out'),
+        ),
+      ],
+    ),
+  );
+  if (ok == true && context.mounted) {
+    Navigator.of(context).popUntil((route) => route.isFirst);
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+      content: Text('Logged out (demo) — onboarding flow would restart here'),
+      behavior: SnackBarBehavior.floating,
+    ));
+  }
+}
 
 /// `account_profile` — user header (avatar, name, tier), stat strip,
 /// settings list grouped (Account / Activity / Preferences / Other).
@@ -26,7 +58,10 @@ class AccountProfileScreen extends StatelessWidget {
         leading: const BackButton(),
         title: const Text('Account'),
         actions: [
-          IconButton(icon: const Icon(Icons.settings_outlined), onPressed: () {}),
+          IconButton(
+            icon: const Icon(Icons.settings_outlined),
+            onPressed: () => _push(context, const SettingsScreen()),
+          ),
           const SizedBox(width: 4),
         ],
       ),
@@ -45,20 +80,10 @@ class AccountProfileScreen extends StatelessWidget {
               children: [
                 InkWell(
                   customBorder: const CircleBorder(),
-                  onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                      content: Text('Edit profile photo — coming soon'),
-                      duration: Duration(seconds: 2),
-                    ));
-                  },
+                  onTap: () => showProfilePhotoPicker(context),
                   child: Stack(
                     children: [
-                      const CircleAvatar(
-                        radius: 36,
-                        backgroundImage: NetworkImage(
-                          'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&q=80',
-                        ),
-                      ),
+                      const ProfileAvatar(radius: 36),
                       Positioned(
                         right: 0,
                         bottom: 0,
@@ -72,7 +97,10 @@ class AccountProfileScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 10),
-                Text('Merveille K.', style: text.titleLarge),
+                ListenableBuilder(
+                  listenable: AppState.instance,
+                  builder: (ctx, _) => Text(AppState.instance.name, style: text.titleLarge),
+                ),
                 const SizedBox(height: 4),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -80,27 +108,46 @@ class AccountProfileScreen extends StatelessWidget {
                     color: TastyColors.warningContainer,
                     borderRadius: TastyRadii.fullRadius,
                   ),
-                  child: Text('Gold Member',
+                  child: Text(AppState.instance.memberTier,
                       style: text.labelSmall?.copyWith(
                         color: TastyColors.onWarningContainer,
                         fontWeight: FontWeight.w700,
                       )),
                 ),
                 const SizedBox(height: TastySpacing.stackMd),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: const [
-                    _Stat(value: '48', label: 'Orders'),
-                    _Stat(value: '8 500', label: 'Points'),
-                    _Stat(value: '14', label: 'Favorites'),
-                  ],
+                ListenableBuilder(
+                  listenable: CartController.instance,
+                  builder: (ctx, _) {
+                    final cart = CartController.instance;
+                    String fmt(int n) {
+                      final s = n.toString();
+                      final buf = StringBuffer();
+                      for (int i = 0; i < s.length; i++) {
+                        if (i > 0 && (s.length - i) % 3 == 0) buf.write(' ');
+                        buf.write(s[i]);
+                      }
+                      return buf.toString();
+                    }
+                    return Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        _Stat(value: '${cart.pastOrders.length}', label: 'Orders'),
+                        _Stat(value: fmt(cart.loyaltyPoints), label: 'Points'),
+                        _Stat(value: '${cart.favoriteCount}', label: 'Favorites'),
+                      ],
+                    );
+                  },
                 ),
               ],
             ),
           ),
           const SizedBox(height: TastySpacing.sectionGap),
           _Group('ACCOUNT', [
-            _Tile(icon: Icons.person_outline, title: 'Personal information', onTap: () {}),
+            _Tile(
+              icon: Icons.person_outline,
+              title: 'Personal information',
+              onTap: () => _push(context, const EditProfileScreen()),
+            ),
             _Tile(
               icon: Icons.location_on_outlined,
               title: 'Saved addresses',
@@ -145,8 +192,24 @@ class AccountProfileScreen extends StatelessWidget {
             ),
           ]),
           _Group('PREFERENCES', [
-            _Tile(icon: Icons.language, title: 'Language', value: 'Français', onTap: () {}),
-            _Tile(icon: Icons.dark_mode_outlined, title: 'Appearance', value: 'System', onTap: () {}),
+            ListenableBuilder(
+              listenable: AppState.instance,
+              builder: (context, _) => _Tile(
+                icon: Icons.language,
+                title: 'Language',
+                value: AppState.instance.language.label,
+                onTap: () => _push(context, const LanguageSettingsScreen()),
+              ),
+            ),
+            ListenableBuilder(
+              listenable: AppState.instance,
+              builder: (context, _) => _Tile(
+                icon: Icons.dark_mode_outlined,
+                title: 'Appearance',
+                value: AppState.instance.themeModeLabel,
+                onTap: () => _push(context, const AppearanceSettingsScreen()),
+              ),
+            ),
             _Tile(
               icon: Icons.notifications_outlined,
               title: 'Notifications',
@@ -159,8 +222,17 @@ class AccountProfileScreen extends StatelessWidget {
               title: 'Help & support',
               onTap: () => _push(context, const HelpSupportScreen()),
             ),
-            _Tile(icon: Icons.gavel, title: 'Legal', onTap: () {}),
-            _Tile(icon: Icons.logout, title: 'Log out', danger: true, onTap: () {}),
+            _Tile(
+              icon: Icons.gavel,
+              title: 'Legal',
+              onTap: () => _push(context, const LegalScreen()),
+            ),
+            _Tile(
+              icon: Icons.logout,
+              title: 'Log out',
+              danger: true,
+              onTap: () => _confirmLogout(context),
+            ),
           ]),
         ],
       ),

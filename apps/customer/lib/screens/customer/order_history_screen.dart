@@ -2,8 +2,11 @@ import 'package:design_tokens/design_tokens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../services/receipt_pdf.dart';
 import '../../state/cart_controller.dart';
 import 'cart_screen.dart';
+import 'live_order_tracking_screen.dart';
+import 'order_details_screen.dart';
 
 /// `order_history_reorder` — past orders grouped by status with one-tap
 /// reorder. Top tabs (Completed / Cancelled / Drafts), cards with
@@ -20,7 +23,7 @@ class OrderHistoryScreen extends StatelessWidget {
       child: Scaffold(
         backgroundColor: scheme.surface,
         appBar: AppBar(
-          leading: IconButton(icon: const Icon(Icons.menu), onPressed: () {}),
+          automaticallyImplyLeading: false,
           title: Text('KINSHASA EATS',
               style: text.titleLarge?.copyWith(color: scheme.primary, letterSpacing: 1.4)),
           centerTitle: true,
@@ -65,11 +68,150 @@ class OrderHistoryScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: TastySpacing.stackLg),
-            for (final o in _orders)
-              Padding(
-                padding: const EdgeInsets.only(bottom: TastySpacing.gutterCard),
-                child: _OrderCard(order: o),
-              ),
+            // Live active order tracking card (interactive navigation link)
+            ListenableBuilder(
+              listenable: CartController.instance,
+              builder: (context, _) {
+                final order = CartController.instance.activeOrder;
+                if (order == null) return const SizedBox.shrink();
+                
+                final progress = CartController.instance.simProgress;
+                final stageStr = CartController.instance.simStage;
+                
+                String stageLabel = 'Preparing Order';
+                IconData stageIcon = Icons.restaurant_menu;
+                double barVal = 0.35;
+                
+                if (stageStr == 'placed') {
+                  stageLabel = 'Order Placed';
+                  stageIcon = Icons.receipt_long;
+                  barVal = 0.15;
+                } else if (stageStr == 'preparing') {
+                  stageLabel = 'Preparing Food';
+                  stageIcon = Icons.restaurant;
+                  barVal = 0.40;
+                } else if (stageStr == 'outForDelivery') {
+                  stageLabel = 'Rider is on the Way!';
+                  stageIcon = Icons.pedal_bike;
+                  barVal = 0.4 + 0.5 * ((progress - 0.35) / 0.55);
+                } else if (stageStr == 'arrived') {
+                  stageLabel = 'Driver Outside!';
+                  stageIcon = Icons.pin_drop;
+                  barVal = 1.0;
+                }
+
+                return Container(
+                  margin: const EdgeInsets.only(bottom: TastySpacing.gutterCard),
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: scheme.primaryContainer.withValues(alpha: 0.15),
+                    borderRadius: TastyRadii.xlRadius,
+                    border: Border.all(color: scheme.primary.withValues(alpha: 0.35), width: 1.5),
+                    boxShadow: TastyShadows.ambient,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            width: 38,
+                            height: 38,
+                            decoration: BoxDecoration(
+                              color: scheme.primary.withValues(alpha: 0.12),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(stageIcon, color: scheme.primary, size: 18),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('ACTIVE ORDER IN PROGRESS',
+                                    style: text.labelSmall?.copyWith(
+                                      color: scheme.primary,
+                                      fontWeight: FontWeight.bold,
+                                      letterSpacing: 1.2,
+                                    )),
+                                const SizedBox(height: 2),
+                                Text(order.restaurantName,
+                                    style: text.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
+                              ],
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: stageStr == 'arrived' ? TastyColors.successContainer : scheme.primaryContainer,
+                              borderRadius: TastyRadii.fullRadius,
+                            ),
+                            child: Text(
+                              stageLabel,
+                              style: text.labelSmall?.copyWith(
+                                color: stageStr == 'arrived' ? TastyColors.onSuccessContainer : scheme.onPrimaryContainer,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      ClipRRect(
+                        borderRadius: TastyRadii.fullRadius,
+                        child: LinearProgressIndicator(
+                          value: barVal.clamp(0.0, 1.0),
+                          minHeight: 5,
+                          backgroundColor: scheme.surfaceContainer,
+                          valueColor: AlwaysStoppedAnimation(scheme.primary),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Order Total: \$${order.total.toStringAsFixed(2)}',
+                            style: text.labelMedium?.copyWith(fontWeight: FontWeight.bold),
+                          ),
+                          FilledButton.icon(
+                            onPressed: () {
+                              HapticFeedback.mediumImpact();
+                              Navigator.of(context).push(
+                                MaterialPageRoute(builder: (_) => const LiveOrderTrackingScreen()),
+                              );
+                            },
+                            icon: const Icon(Icons.gps_fixed, size: 14),
+                            label: const Text('Open Tracker'),
+                            style: FilledButton.styleFrom(
+                              backgroundColor: scheme.primary,
+                              foregroundColor: scheme.onPrimary,
+                              minimumSize: const Size(110, 32),
+                              padding: const EdgeInsets.symmetric(horizontal: 12),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+            ListenableBuilder(
+              listenable: CartController.instance,
+              builder: (context, _) {
+                final pastOrders = CartController.instance.pastOrders;
+                return Column(
+                  children: [
+                    for (final o in pastOrders)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: TastySpacing.gutterCard),
+                        child: _OrderCard(order: o),
+                      ),
+                  ],
+                );
+              },
+            ),
           ],
         ),
       ),
@@ -77,54 +219,32 @@ class OrderHistoryScreen extends StatelessWidget {
   }
 }
 
-class _Order {
-  const _Order({required this.restaurant, required this.date, required this.items, required this.total, required this.image});
-  final String restaurant;
-  final String date;
-  final String items;
-  final String total;
-  final String image;
-}
-
-const _orders = <_Order>[
-  _Order(
-    restaurant: 'Le Relais de la Cité',
-    date: 'Oct 24, 2024 · 19:30',
-    items: '2× Poulet Mayo Grillé, 1× Frites Maison, 2× Coca-Cola',
-    total: '\$34.50',
-    image: 'https://images.unsplash.com/photo-1604908177453-7462950a6a3b?w=200&q=80',
-  ),
-  _Order(
-    restaurant: 'Pizzeria Napoli Gombe',
-    date: 'Oct 18, 2024 · 20:15',
-    items: '1× Margherita Grande, 1× Tiramisu',
-    total: '\$22.00',
-    image: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=200&q=80',
-  ),
-  _Order(
-    restaurant: 'Sushi Lounge',
-    date: 'Oct 12, 2024 · 21:00',
-    items: '1× Dragon Roll, 1× Salmon Nigiri, 1× Edamame',
-    total: '\$28.50',
-    image: 'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=200&q=80',
-  ),
-];
-
 class _OrderCard extends StatelessWidget {
   const _OrderCard({required this.order});
-  final _Order order;
+  final OrderHistoryItem order;
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
     return Container(
-      padding: const EdgeInsets.all(TastySpacing.gutterCard),
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: scheme.surfaceContainerLowest,
         borderRadius: TastyRadii.xlRadius,
         boxShadow: TastyShadows.ambient,
       ),
-      child: Column(
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {
+            HapticFeedback.lightImpact();
+            Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => OrderDetailsScreen(order: order)),
+            );
+          },
+          child: Padding(
+            padding: const EdgeInsets.all(TastySpacing.gutterCard),
+            child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
@@ -142,11 +262,12 @@ class _OrderCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(order.restaurant, style: text.titleSmall),
+                    Text(order.restaurantName, style: text.titleSmall),
                     Text(order.date, style: text.labelMedium),
                   ],
                 ),
               ),
+              Icon(Icons.chevron_right, color: scheme.onSurfaceVariant),
             ],
           ),
           const SizedBox(height: 12),
@@ -170,56 +291,89 @@ class _OrderCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-          Text(order.items, style: text.bodyMedium),
+          Text(order.itemsDescription, style: text.bodyMedium),
           const SizedBox(height: 6),
-          Row(
-            children: [
-              Icon(Icons.download, size: 14, color: scheme.onSurfaceVariant),
-              const SizedBox(width: 4),
-              Text('Download Receipt', style: text.labelMedium),
-            ],
+          InkWell(
+            borderRadius: TastyRadii.smRadius,
+            onTap: () async {
+              HapticFeedback.lightImpact();
+              final messenger = ScaffoldMessenger.of(context);
+              try {
+                await shareReceiptPdf(order);
+              } catch (e) {
+                messenger.showSnackBar(SnackBar(
+                  content: Text('Could not generate receipt: $e'),
+                  behavior: SnackBarBehavior.floating,
+                ));
+              }
+            },
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 2),
+              child: Row(
+                children: [
+                  Icon(Icons.download, size: 14, color: scheme.onSurfaceVariant),
+                  const SizedBox(width: 4),
+                  Text('Download Receipt', style: text.labelMedium),
+                ],
+              ),
+            ),
           ),
           const Divider(height: 24),
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Total', style: text.labelMedium),
-                    Text(order.total, style: text.titleLarge),
-                  ],
-                ),
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Total', style: text.labelMedium),
+                  Text('\$${order.total.toStringAsFixed(2)}', style: text.titleLarge),
+                ],
               ),
-              FilledButton.icon(
+              FilledButton(
                 onPressed: () {
                   HapticFeedback.mediumImpact();
-                  // Reorder: re-bind cart to this restaurant and add a
-                  // single line representing the past order. Demo-grade
-                  // so the customer can hit checkout immediately.
                   final cart = CartController.instance;
                   cart.clear();
-                  cart.setRestaurant(id: order.restaurant, name: order.restaurant);
-                  cart.add(CartItem(
-                    id: '${order.restaurant}-bundle',
-                    name: order.items,
-                    price: double.parse(order.total.replaceAll('\$', '')),
-                    image: order.image,
-                  ));
+                  cart.setRestaurant(id: order.restaurantName, name: order.restaurantName);
+                  if (order.items.isNotEmpty) {
+                    for (final item in order.items) {
+                      cart.add(item);
+                    }
+                  } else {
+                    cart.add(CartItem(
+                      id: '${order.restaurantName}-bundle',
+                      name: order.itemsDescription,
+                      price: order.total,
+                      image: order.image,
+                    ));
+                  }
                   Navigator.of(context).push(
                     MaterialPageRoute(builder: (_) => const CartScreen()),
                   );
                 },
-                icon: const Icon(Icons.refresh),
-                label: const Text('Reorder'),
                 style: FilledButton.styleFrom(
                   backgroundColor: scheme.primary,
                   foregroundColor: scheme.onPrimary,
+                  minimumSize: const Size(120, 40),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: const [
+                    Icon(Icons.refresh, size: 18),
+                    SizedBox(width: 6),
+                    Text('Reorder'),
+                  ],
                 ),
               ),
             ],
           ),
         ],
+            ),
+          ),
+        ),
       ),
     );
   }
