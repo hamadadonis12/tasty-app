@@ -6,16 +6,14 @@ import 'package:flutter/services.dart';
 
 import '../../models/restaurant.dart';
 import '../../state/cart_controller.dart';
-import 'cart_screen.dart';
+import '../../widgets/tasty_location_header.dart';
 import 'category_restaurants_screen.dart';
-import 'coupon_wallet_screen.dart';
 import 'explore_categories_screen.dart';
 import 'explore_tastylife_screen.dart';
 import 'find_my_craving_screen.dart';
 import 'kinshasa_luxe_screen.dart';
 import 'live_order_tracking_screen.dart';
 import 'loyalty_rewards_screen.dart';
-import 'notifications_screen.dart';
 import 'restaurant_detail_screen.dart';
 import 'smart_search_screen.dart';
 
@@ -35,12 +33,10 @@ class ImmersiveHomeScreen extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     return Scaffold(
       backgroundColor: scheme.surface,
-      body: SafeArea(
-        bottom: false,
-        child: CustomScrollView(
-          slivers: [
-            const SliverToBoxAdapter(child: _TopBar()),
-            const SliverToBoxAdapter(child: SizedBox(height: TastySpacing.stackMd)),
+      body: CustomScrollView(
+        slivers: [
+          const SliverToBoxAdapter(child: TastyLocationHeader()),
+          const SliverToBoxAdapter(child: SizedBox(height: TastySpacing.stackMd)),
             SliverToBoxAdapter(
               child: _CinematicHero(
                 onEtaTap: () => Navigator.of(context).push(
@@ -136,113 +132,7 @@ class ImmersiveHomeScreen extends StatelessWidget {
             const SliverToBoxAdapter(child: SizedBox(height: 32)),
           ],
         ),
-      ),
       bottomNavigationBar: hideBottomNav ? null : const _HomeBottomNav(),
-    );
-  }
-}
-
-class _TopBar extends StatelessWidget {
-  const _TopBar();
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final text = Theme.of(context).textTheme;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        TastySpacing.marginPage,
-        TastySpacing.stackMd,
-        TastySpacing.marginPage,
-        0,
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: scheme.primary.withValues(alpha: 0.15),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(Icons.person, color: scheme.primary, size: 22),
-          ),
-          const SizedBox(width: TastySpacing.stackSm),
-          Text('TastyLife',
-              style: text.headlineSmall?.copyWith(color: scheme.primary, fontWeight: FontWeight.w700)),
-          const Spacer(),
-          // Cart icon with live badge
-          ListenableBuilder(
-            listenable: CartController.instance,
-            builder: (_, __) {
-              final count = CartController.instance.itemCount;
-              return Material(
-                color: scheme.surfaceContainerLowest,
-                shape: const CircleBorder(),
-                child: InkWell(
-                  customBorder: const CircleBorder(),
-                  onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const CartScreen()),
-                  ),
-                  child: Container(
-                    width: 40, height: 40,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      boxShadow: TastyShadows.ambient,
-                    ),
-                    child: Stack(
-                      children: [
-                        Center(
-                          child: Icon(Icons.shopping_bag_outlined,
-                              color: scheme.primary, size: 22),
-                        ),
-                        if (count > 0)
-                          Positioned(
-                            top: 4, right: 4,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                              decoration: BoxDecoration(
-                                color: TastyColors.brandOrange,
-                                borderRadius: TastyRadii.fullRadius,
-                                border: Border.all(color: scheme.surface, width: 1.5),
-                              ),
-                              constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
-                              child: Text('$count',
-                                  textAlign: TextAlign.center,
-                                  style: text.labelSmall?.copyWith(
-                                    color: TastyColors.brandInk,
-                                    fontWeight: FontWeight.w800,
-                                    fontSize: 9.5,
-                                  )),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
-          const SizedBox(width: 8),
-          Material(
-            color: scheme.surfaceContainerLowest,
-            shape: const CircleBorder(),
-            child: InkWell(
-              customBorder: const CircleBorder(),
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const NotificationsScreen()),
-              ),
-              child: Container(
-                width: 40, height: 40,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  boxShadow: TastyShadows.ambient,
-                ),
-                child: Icon(Icons.notifications_none, color: scheme.primary, size: 22),
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

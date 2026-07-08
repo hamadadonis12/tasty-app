@@ -19,6 +19,7 @@ class Restaurant {
     required this.priceLevel,
     required this.menu,
     this.tags = const [],
+    this.freeDeliveryMinimum = 15.0,
   });
 
   final String id;
@@ -36,6 +37,8 @@ class Restaurant {
   final List<MenuItem> menu;
   /// Lowercased category tags used for category / search filtering.
   final List<String> tags;
+  /// Order subtotal (in USD) above which delivery is free for this restaurant.
+  final double freeDeliveryMinimum;
 
   String get etaRange => '$etaMinutes–${etaMinutes + 10} min';
 }
