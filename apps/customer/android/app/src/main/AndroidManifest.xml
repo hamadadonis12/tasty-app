@@ -1,4 +1,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Required in release builds to load remote images (restaurant photos,
+         avatars, hero art). Debug/profile manifests inject this automatically;
+         release does not, so it must be declared here. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
     <!-- Voice search (speech_to_text) -->
     <uses-permission android:name="android.permission.RECORD_AUDIO"/>
     <application

@@ -88,3 +88,4 @@ apps/api/node_modules/
 
 # Windows
 **/windows/flutter/ephemeral/
+.gstack/

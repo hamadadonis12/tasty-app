@@ -106,6 +106,13 @@ class OrderHistoryItem {
     required this.image,
     required this.items,
     required this.verificationPin,
+    this.driverName = '',
+    this.driverInitials = '',
+    this.driverVehicle = '',
+    this.deliveryAddress = '',
+    this.paymentLabel = 'Orange Money',
+    this.deliveryFee = 0,
+    this.serviceFee = 0,
   });
 
   final String orderId;
@@ -116,6 +123,19 @@ class OrderHistoryItem {
   final String image;
   final List<CartItem> items;
   final String verificationPin;
+
+  /// How it reached you — driver + delivery details shown on Order Details.
+  final String driverName;
+  final String driverInitials;
+  final String driverVehicle;
+  final String deliveryAddress;
+  final String paymentLabel;
+  final double deliveryFee;
+  final double serviceFee;
+
+  /// Derived so the receipt/details breakdown always reconciles to [total].
+  double get subtotal =>
+      (total - deliveryFee - serviceFee).clamp(0.0, double.infinity);
 }
 
 
@@ -249,6 +269,13 @@ class CartController extends ChangeNotifier {
         image: 'https://images.unsplash.com/photo-1604908177453-7462950a6a3b?w=200&q=80',
         items: [],
         verificationPin: '8427',
+        driverName: 'Patrick Mbuyi',
+        driverInitials: 'PM',
+        driverVehicle: 'Motorbike · 9821 AB/05',
+        deliveryAddress: '14 Avenue du Commerce, Gombe',
+        paymentLabel: 'Orange Money',
+        deliveryFee: 2.00,
+        serviceFee: 1.50,
       ),
       const OrderHistoryItem(
         orderId: 'TL-5731',
@@ -259,6 +286,13 @@ class CartController extends ChangeNotifier {
         image: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=200&q=80',
         items: [],
         verificationPin: '5521',
+        driverName: 'Christian Tshibanda',
+        driverInitials: 'CT',
+        driverVehicle: 'Motorbike · 4417 CD/05',
+        deliveryAddress: '22 Avenue Kasa-Vubu, Kasa-Vubu',
+        paymentLabel: 'Airtel Money',
+        deliveryFee: 2.50,
+        serviceFee: 1.00,
       ),
       const OrderHistoryItem(
         orderId: 'TL-3420',
@@ -269,6 +303,13 @@ class CartController extends ChangeNotifier {
         image: 'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=200&q=80',
         items: [],
         verificationPin: '1945',
+        driverName: 'Merveille Ilunga',
+        driverInitials: 'MI',
+        driverVehicle: 'Motorbike · 6390 EF/05',
+        deliveryAddress: '8 Boulevard du 30 Juin, Gombe',
+        paymentLabel: 'Orange Money',
+        deliveryFee: 3.50,
+        serviceFee: 1.50,
       ),
     ]);
   }
@@ -628,6 +669,13 @@ class CartController extends ChangeNotifier {
           : 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=200&q=80',
       items: List.unmodifiable(_items),
       verificationPin: verificationPin,
+      driverName: order.driverName,
+      driverInitials: order.driverInitials,
+      driverVehicle: 'Motorbike',
+      deliveryAddress: '14 Avenue du Commerce, Gombe',
+      paymentLabel: order.paymentLabel,
+      deliveryFee: order.deliveryFee,
+      serviceFee: order.serviceFee,
     );
 
     // Persist placed order to the database API service

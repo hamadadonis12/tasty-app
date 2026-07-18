@@ -36,6 +36,7 @@ dependencies:
   pdf: ^3.12.0
   printing: ^5.14.3
   speech_to_text: ^7.4.0
+  image_picker: ^1.2.2
 
 dev_dependencies:
   flutter_test:
@@ -55,7 +56,7 @@ flutter_launcher_icons:
   ios: false
   image_path: "assets/icon/app_icon.png"
   min_sdk_android: 21
-  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_background: "#F5A623"
   adaptive_icon_foreground: "assets/icon/app_icon_foreground.png"
 
 # For information on the generic Dart part of this file, see the

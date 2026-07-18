@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../state/app_state.dart';
+import 'add_money_screen.dart';
 import 'add_payment_method_screen.dart';
 import 'send_credit_screen.dart';
 import 'transaction_history_screen.dart';
@@ -25,18 +26,12 @@ class _WalletPaymentsScreenState extends State<WalletPaymentsScreen> {
     Navigator.of(context).push(MaterialPageRoute(builder: (_) => screen));
   }
 
-  void _showTopUpSheet() {
+  void _openAddMoney() {
     HapticFeedback.lightImpact();
     final methods = AppState.instance.paymentMethods;
     final method = methods[_selectedMethod.clamp(0, methods.length - 1)].label;
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Theme.of(context).colorScheme.surfaceContainerLowest,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(TastyRadii.xxl)),
-      ),
-      builder: (_) => _TopUpSheet(method: method),
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => AddMoneyScreen(method: method)),
     );
   }
 
@@ -102,7 +97,7 @@ class _WalletPaymentsScreenState extends State<WalletPaymentsScreen> {
                               backgroundColor: Colors.white,
                               foregroundColor: scheme.primary,
                             ),
-                            onPressed: _showTopUpSheet,
+                            onPressed: _openAddMoney,
                           ),
                         ),
                         const SizedBox(width: 10),
@@ -284,83 +279,3 @@ class _Tx extends StatelessWidget {
   }
 }
 
-class _TopUpSheet extends StatefulWidget {
-  const _TopUpSheet({required this.method});
-  final String method;
-  @override
-  State<_TopUpSheet> createState() => _TopUpSheetState();
-}
-
-class _TopUpSheetState extends State<_TopUpSheet> {
-  static const _amounts = [5000, 10000, 25000, 50000, 100000];
-  int _amount = 25000;
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final text = Theme.of(context).textTheme;
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-        TastySpacing.marginPage,
-        TastySpacing.stackMd,
-        TastySpacing.marginPage,
-        MediaQuery.viewInsetsOf(context).bottom + TastySpacing.stackLg,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Center(
-            child: Container(
-              width: 40, height: 4,
-              decoration: BoxDecoration(
-                color: scheme.outlineVariant,
-                borderRadius: TastyRadii.fullRadius,
-              ),
-            ),
-          ),
-          const SizedBox(height: 14),
-          Text('Top up via ${widget.method}', style: text.titleLarge),
-          const SizedBox(height: 4),
-          Text('Choose an amount or enter a custom value.',
-              style: text.bodyMedium?.copyWith(color: scheme.onSurfaceVariant)),
-          const SizedBox(height: TastySpacing.stackMd),
-          Wrap(
-            spacing: 8, runSpacing: 8,
-            children: [
-              for (final a in _amounts)
-                ChoiceChip(
-                  label: Text('$a FC'),
-                  selected: a == _amount,
-                  onSelected: (_) {
-                    HapticFeedback.selectionClick();
-                    setState(() => _amount = a);
-                  },
-                ),
-            ],
-          ),
-          const SizedBox(height: TastySpacing.stackLg),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton(
-              onPressed: () {
-                HapticFeedback.mediumImpact();
-                AppState.instance.topUp(_amount, method: widget.method);
-                Navigator.of(context).pop();
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                  content: Text('Topped up ${formatFc(_amount)} via ${widget.method}'),
-                  behavior: SnackBarBehavior.floating,
-                ));
-              },
-              style: FilledButton.styleFrom(
-                backgroundColor: TastyColors.brandInk,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-              ),
-              child: Text('Top up $_amount FC'),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}

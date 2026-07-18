@@ -130,6 +130,21 @@ class AppState extends ChangeNotifier {
     'https://images.unsplash.com/photo-1531427186611-ecfd6d936c79?w=200&q=80',
   ];
 
+  // ─── Delivery location (shown in the app header) ─────────────────────
+  // Drives the Toters-style location selector in the home header. Defaults
+  // to a Gombe (Kinshasa) address; updated when the customer picks another.
+  String _addressLabel = 'Home';
+  String _addressLine = '12 Avenue du Commerce, Gombe, Kinshasa';
+
+  String get addressLabel => _addressLabel;
+  String get addressLine => _addressLine;
+
+  void setAddress({String? label, String? line}) {
+    if (label != null && label.trim().isNotEmpty) _addressLabel = label.trim();
+    if (line != null && line.trim().isNotEmpty) _addressLine = line.trim();
+    notifyListeners();
+  }
+
   // ─── Preferences ────────────────────────────────────────────────────
   AppLanguage _language = AppLanguage.francais;
   ThemeMode _themeMode = ThemeMode.system;
@@ -158,6 +173,16 @@ class AppState extends ChangeNotifier {
   int get balanceFc => _balanceFc;
   double get balanceUsd => _balanceFc / _usdToCdf;
 
+  /// Monthly top-up ceiling and how much of it has been used this month.
+  /// Surfaced as "Monthly Remaining Limit" on the Add money screen and used
+  /// to validate a requested top-up.
+  final int _monthlyTopUpLimitFc = 2000000;
+  int _monthlyToppedUpFc = 291766;
+
+  /// FC the customer may still top up this month.
+  int get monthlyTopUpRemainingFc =>
+      (_monthlyTopUpLimitFc - _monthlyToppedUpFc).clamp(0, _monthlyTopUpLimitFc);
+
   final List<PaymentMethod> _methods = <PaymentMethod>[
     const PaymentMethod(icon: Icons.smartphone, label: 'Orange Money', sub: '+243 89 *** **45'),
     const PaymentMethod(icon: Icons.smartphone, label: 'Airtel Money', sub: '+243 99 *** **12'),
@@ -174,9 +199,12 @@ class AppState extends ChangeNotifier {
   ];
   List<WalletTx> get transactions => List.unmodifiable(_transactions);
 
-  void topUp(int fc, {required String method}) {
-    if (fc <= 0) return;
+  /// Add [fc] to the wallet via [method]. Returns false (without mutating)
+  /// when the amount is invalid or would exceed the monthly top-up limit.
+  bool topUp(int fc, {required String method}) {
+    if (fc <= 0 || fc > monthlyTopUpRemainingFc) return false;
     _balanceFc += fc;
+    _monthlyToppedUpFc += fc;
     _transactions.insert(0, WalletTx(
       label: 'Wallet top-up',
       amountFc: fc,
@@ -184,6 +212,7 @@ class AppState extends ChangeNotifier {
       icon: Icons.add,
     ));
     notifyListeners();
+    return true;
   }
 
   /// Send credit to another user. Returns false if the wallet can't cover it.

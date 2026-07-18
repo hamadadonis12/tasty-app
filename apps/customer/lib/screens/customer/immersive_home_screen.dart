@@ -4,16 +4,16 @@ import 'package:design_tokens/design_tokens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../models/restaurant.dart';
 import '../../state/cart_controller.dart';
-import 'cart_screen.dart';
+import '../../widgets/tasty_location_header.dart';
 import 'category_restaurants_screen.dart';
-import 'coupon_wallet_screen.dart';
 import 'explore_categories_screen.dart';
 import 'explore_tastylife_screen.dart';
 import 'find_my_craving_screen.dart';
 import 'kinshasa_luxe_screen.dart';
 import 'live_order_tracking_screen.dart';
-import 'notifications_screen.dart';
+import 'loyalty_rewards_screen.dart';
 import 'restaurant_detail_screen.dart';
 import 'smart_search_screen.dart';
 
@@ -33,12 +33,10 @@ class ImmersiveHomeScreen extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     return Scaffold(
       backgroundColor: scheme.surface,
-      body: SafeArea(
-        bottom: false,
-        child: CustomScrollView(
-          slivers: [
-            const SliverToBoxAdapter(child: _TopBar()),
-            const SliverToBoxAdapter(child: SizedBox(height: TastySpacing.stackMd)),
+      body: CustomScrollView(
+        slivers: [
+          const SliverToBoxAdapter(child: TastyLocationHeader()),
+          const SliverToBoxAdapter(child: SizedBox(height: TastySpacing.stackMd)),
             SliverToBoxAdapter(
               child: _CinematicHero(
                 onEtaTap: () => Navigator.of(context).push(
@@ -46,6 +44,16 @@ class ImmersiveHomeScreen extends StatelessWidget {
                 ),
                 onSearchTap: () => Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => const SmartSearchScreen()),
+                ),
+              ),
+            ),
+            const SliverToBoxAdapter(child: SizedBox(height: TastySpacing.stackMd)),
+            const SliverToBoxAdapter(child: _HomeFilterChips()),
+            const SliverToBoxAdapter(child: SizedBox(height: TastySpacing.sectionGap)),
+            SliverToBoxAdapter(
+              child: _LoyaltyProgressCard(
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const LoyaltyRewardsScreen()),
                 ),
               ),
             ),
@@ -102,6 +110,17 @@ class ImmersiveHomeScreen extends StatelessWidget {
             const SliverToBoxAdapter(child: SizedBox(height: TastySpacing.stackMd)),
             const SliverToBoxAdapter(child: _OrderAgainRow()),
             const SliverToBoxAdapter(child: SizedBox(height: TastySpacing.sectionGap)),
+            SliverToBoxAdapter(
+              child: _SectionHeader(
+                title: 'All Restaurants',
+                onSeeAll: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const ExploreCategoriesScreen()),
+                ),
+              ),
+            ),
+            const SliverToBoxAdapter(child: SizedBox(height: TastySpacing.stackMd)),
+            const SliverToBoxAdapter(child: _AllRestaurantsList()),
+            const SliverToBoxAdapter(child: SizedBox(height: TastySpacing.sectionGap)),
             // Luxe upsell banner
             SliverToBoxAdapter(
               child: _LuxeBanner(
@@ -113,113 +132,7 @@ class ImmersiveHomeScreen extends StatelessWidget {
             const SliverToBoxAdapter(child: SizedBox(height: 32)),
           ],
         ),
-      ),
       bottomNavigationBar: hideBottomNav ? null : const _HomeBottomNav(),
-    );
-  }
-}
-
-class _TopBar extends StatelessWidget {
-  const _TopBar();
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final text = Theme.of(context).textTheme;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        TastySpacing.marginPage,
-        TastySpacing.stackMd,
-        TastySpacing.marginPage,
-        0,
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: scheme.primary.withValues(alpha: 0.15),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(Icons.person, color: scheme.primary, size: 22),
-          ),
-          const SizedBox(width: TastySpacing.stackSm),
-          Text('TastyLife',
-              style: text.headlineSmall?.copyWith(color: scheme.primary, fontWeight: FontWeight.w700)),
-          const Spacer(),
-          // Cart icon with live badge
-          ListenableBuilder(
-            listenable: CartController.instance,
-            builder: (_, __) {
-              final count = CartController.instance.itemCount;
-              return Material(
-                color: scheme.surfaceContainerLowest,
-                shape: const CircleBorder(),
-                child: InkWell(
-                  customBorder: const CircleBorder(),
-                  onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const CartScreen()),
-                  ),
-                  child: Container(
-                    width: 40, height: 40,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      boxShadow: TastyShadows.ambient,
-                    ),
-                    child: Stack(
-                      children: [
-                        Center(
-                          child: Icon(Icons.shopping_bag_outlined,
-                              color: scheme.primary, size: 22),
-                        ),
-                        if (count > 0)
-                          Positioned(
-                            top: 4, right: 4,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                              decoration: BoxDecoration(
-                                color: TastyColors.brandOrange,
-                                borderRadius: TastyRadii.fullRadius,
-                                border: Border.all(color: scheme.surface, width: 1.5),
-                              ),
-                              constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
-                              child: Text('$count',
-                                  textAlign: TextAlign.center,
-                                  style: text.labelSmall?.copyWith(
-                                    color: TastyColors.brandInk,
-                                    fontWeight: FontWeight.w800,
-                                    fontSize: 9.5,
-                                  )),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
-          const SizedBox(width: 8),
-          Material(
-            color: scheme.surfaceContainerLowest,
-            shape: const CircleBorder(),
-            child: InkWell(
-              customBorder: const CircleBorder(),
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const NotificationsScreen()),
-              ),
-              child: Container(
-                width: 40, height: 40,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  boxShadow: TastyShadows.ambient,
-                ),
-                child: Icon(Icons.notifications_none, color: scheme.primary, size: 22),
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
@@ -446,6 +359,217 @@ class _SectionHeader extends StatelessWidget {
             ]),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Toters-style quick filters under the search. Tapping one jumps into the
+/// browsable category/explore screen (in-place filtering would need the home
+/// to be stateful; navigation keeps it a clean StatelessWidget).
+class _HomeFilterChips extends StatelessWidget {
+  const _HomeFilterChips();
+  static const _filters = ['Offers', 'Free Delivery', 'Top Rated', 'New'];
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final text = Theme.of(context).textTheme;
+    return SizedBox(
+      height: 40,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: TastySpacing.marginPage),
+        itemCount: _filters.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        itemBuilder: (context, i) => ActionChip(
+          label: Text(_filters[i]),
+          labelStyle: text.labelLarge?.copyWith(color: scheme.onSurface),
+          backgroundColor: scheme.surfaceContainerLow,
+          side: BorderSide(color: scheme.outlineVariant),
+          shape: const StadiumBorder(),
+          onPressed: () {
+            HapticFeedback.selectionClick();
+            Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const ExploreCategoriesScreen()),
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+/// Gold-tier loyalty progress, reading live points from [CartController].
+class _LoyaltyProgressCard extends StatelessWidget {
+  const _LoyaltyProgressCard({required this.onTap});
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final text = Theme.of(context).textTheme;
+    return ListenableBuilder(
+      listenable: CartController.instance,
+      builder: (context, _) {
+        final cart = CartController.instance;
+        final pts = cart.loyaltyPoints;
+        final progress =
+            (pts / CartController.loyaltyTierTarget).clamp(0.0, 1.0);
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: TastySpacing.marginPage),
+          child: Material(
+            color: Colors.transparent,
+            borderRadius: TastyRadii.xlRadius,
+            child: InkWell(
+              borderRadius: TastyRadii.xlRadius,
+              onTap: () {
+                HapticFeedback.lightImpact();
+                onTap();
+              },
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: scheme.surfaceContainerLowest,
+                  borderRadius: TastyRadii.xlRadius,
+                  boxShadow: TastyShadows.ambient,
+                  border: Border.all(
+                      color: scheme.primary.withValues(alpha: 0.25)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.workspace_premium,
+                            color: scheme.primary, size: 20),
+                        const SizedBox(width: 8),
+                        Text('Gold member', style: text.titleSmall),
+                        const Spacer(),
+                        Text('$pts pts',
+                            style: text.titleSmall
+                                ?.copyWith(color: scheme.primary)),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    ClipRRect(
+                      borderRadius: TastyRadii.fullRadius,
+                      child: LinearProgressIndicator(
+                        value: progress,
+                        minHeight: 6,
+                        backgroundColor: scheme.surfaceContainerHigh,
+                        valueColor: AlwaysStoppedAnimation(scheme.primary),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text('${cart.pointsToNextTier} points to Platinum',
+                        style: text.labelMedium
+                            ?.copyWith(color: scheme.onSurfaceVariant)),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// Full vertical list of every restaurant in the catalogue (Toters' "All
+/// Stores"). Each row opens the real [RestaurantDetailScreen] for that store.
+class _AllRestaurantsList extends StatelessWidget {
+  const _AllRestaurantsList();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: TastySpacing.marginPage),
+      child: Column(
+        children: [
+          for (final r in RestaurantCatalog.all) ...[
+            _RestaurantRow(restaurant: r),
+            const SizedBox(height: TastySpacing.gutterCard),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _RestaurantRow extends StatelessWidget {
+  const _RestaurantRow({required this.restaurant});
+  final Restaurant restaurant;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final text = Theme.of(context).textTheme;
+    return Material(
+      color: Colors.transparent,
+      borderRadius: TastyRadii.xlRadius,
+      child: InkWell(
+        borderRadius: TastyRadii.xlRadius,
+        onTap: () {
+          HapticFeedback.lightImpact();
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => RestaurantDetailScreen(restaurant: restaurant),
+            ),
+          );
+        },
+        child: Container(
+          decoration: BoxDecoration(
+            color: scheme.surfaceContainerLowest,
+            borderRadius: TastyRadii.xlRadius,
+            boxShadow: TastyShadows.ambient,
+          ),
+          padding: const EdgeInsets.all(10),
+          child: Row(
+            children: [
+              ClipRRect(
+                borderRadius: TastyRadii.lgRadius,
+                child: SizedBox(
+                  width: 84,
+                  height: 84,
+                  child: Image.network(restaurant.heroImage,
+                      fit: BoxFit.cover, errorBuilder: _imageFallback),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(restaurant.name, style: text.titleSmall),
+                    const SizedBox(height: 2),
+                    Text('${restaurant.cuisine} · ${restaurant.district}',
+                        style: text.bodySmall
+                            ?.copyWith(color: scheme.onSurfaceVariant)),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        Icon(Icons.star_rounded, size: 14, color: scheme.primary),
+                        const SizedBox(width: 2),
+                        Text('${restaurant.rating}', style: text.labelMedium),
+                        const SizedBox(width: 10),
+                        Icon(Icons.pedal_bike,
+                            size: 14, color: scheme.onSurfaceVariant),
+                        const SizedBox(width: 2),
+                        Text(restaurant.etaRange, style: text.labelMedium),
+                        const SizedBox(width: 10),
+                        Text(restaurant.priceLevel,
+                            style: text.labelMedium
+                                ?.copyWith(color: scheme.onSurfaceVariant)),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              Icon(Icons.chevron_right, color: scheme.onSurfaceVariant),
+            ],
+          ),
+        ),
       ),
     );
   }

@@ -42,6 +42,28 @@ class _RestaurantDetailScreenState extends State<RestaurantDetailScreen>
     super.dispose();
   }
 
+  /// Fixed 40px circular glass button for the hero app bar — identical to the
+  /// item detail screen so back/favorite look consistent and never balloon as
+  /// the SliverAppBar collapses.
+  Widget _circleButton(IconData icon, VoidCallback onPressed) {
+    return Padding(
+      padding: const EdgeInsets.all(8),
+      child: Material(
+        color: Colors.white.withValues(alpha: 0.95),
+        shape: const CircleBorder(),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onPressed,
+          child: SizedBox(
+            width: 40,
+            height: 40,
+            child: Icon(icon, size: 20, color: Colors.black87),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
@@ -57,18 +79,13 @@ class _RestaurantDetailScreenState extends State<RestaurantDetailScreen>
                 expandedHeight: 280,
                 backgroundColor: scheme.surface,
                 surfaceTintColor: Colors.transparent,
-                leading: CircleAvatar(
-                  backgroundColor: Colors.white.withValues(alpha: 0.9),
-                  child: BackButton(color: scheme.onSurface),
-                ),
+                leadingWidth: 56,
+                leading: _circleButton(Icons.arrow_back, () {
+                  HapticFeedback.lightImpact();
+                  Navigator.of(context).maybePop();
+                }),
                 actions: [
-                  CircleAvatar(
-                    backgroundColor: Colors.white.withValues(alpha: 0.9),
-                    child: IconButton(
-                      onPressed: HapticFeedback.lightImpact,
-                      icon: Icon(Icons.favorite_border, color: scheme.onSurface),
-                    ),
-                  ),
+                  _circleButton(Icons.favorite_border, HapticFeedback.lightImpact),
                   const SizedBox(width: TastySpacing.stackMd),
                 ],
                 flexibleSpace: FlexibleSpaceBar(
@@ -112,24 +129,33 @@ class _RestaurantDetailScreenState extends State<RestaurantDetailScreen>
                       Text('${_r.cuisine} · ${_r.district} · ${_r.priceLevel}',
                           style: text.bodyMedium?.copyWith(color: scheme.onSurfaceVariant)),
                       const SizedBox(height: TastySpacing.stackMd),
-                      Row(
+                      // Wrap (not Row) so the pills flow to a second line on
+                      // narrow screens instead of overflowing on the right.
+                      Wrap(
+                        spacing: TastySpacing.stackSm,
+                        runSpacing: TastySpacing.stackSm,
                         children: [
                           _StatPill(
                             icon: Icons.star_rounded,
                             label: '${_r.rating}',
                             sub: '(${_r.reviewCount})',
                           ),
-                          const SizedBox(width: TastySpacing.stackSm),
                           _StatPill(
                             icon: Icons.pedal_bike,
                             label: _r.etaRange,
                             sub: '',
                           ),
-                          const SizedBox(width: TastySpacing.stackSm),
                           _StatPill(
                             icon: Icons.account_balance_wallet_outlined,
                             label: '\$${_r.deliveryFee.toStringAsFixed(2)} fee',
                             sub: '',
+                          ),
+                          _StatPill(
+                            icon: Icons.delivery_dining,
+                            label:
+                                'Free delivery over \$${_r.freeDeliveryMinimum.toStringAsFixed(0)}',
+                            sub: '',
+                            highlight: true,
                           ),
                         ],
                       ),
@@ -168,7 +194,9 @@ class _RestaurantDetailScreenState extends State<RestaurantDetailScreen>
           Positioned(
             left: TastySpacing.marginPage,
             right: TastySpacing.marginPage,
-            bottom: 24,
+            // Lift above the device's bottom nav inset so the pill isn't
+            // hidden under the system navigation bar.
+            bottom: 24 + MediaQuery.viewPaddingOf(context).bottom,
             child: ListenableBuilder(
               listenable: CartController.instance,
               builder: (_, __) {
@@ -242,22 +270,328 @@ class _RestaurantDetailScreenState extends State<RestaurantDetailScreen>
   }
 }
 
-class _MenuList extends StatelessWidget {
+/// Menu tab: a sticky category selector (horizontal chips + a "≡" button that
+/// opens the full vertical category list) above the grouped, scrollable menu.
+/// The active chip tracks the scroll position, and tapping any category jumps
+/// to that section.
+class _MenuList extends StatefulWidget {
   const _MenuList({required this.restaurant});
   final Restaurant restaurant;
   @override
-  Widget build(BuildContext context) {
-    return ListView.separated(
-      padding: const EdgeInsets.fromLTRB(
-        TastySpacing.marginPage,
-        TastySpacing.stackLg,
-        TastySpacing.marginPage,
-        140,
+  State<_MenuList> createState() => _MenuListState();
+}
+
+class _MenuListState extends State<_MenuList> {
+  final ScrollController _scroll = ScrollController();
+  final List<String> _order = <String>[];
+  final Map<String, List<MenuItem>> _byCategory = <String, List<MenuItem>>{};
+  late final List<GlobalKey> _sectionKeys;
+
+  int _active = 0;
+  bool _programmaticScroll = false;
+
+  /// Distance from the list's top below which a section header counts as the
+  /// "current" section (roughly the category-bar height).
+  static const double _activeThreshold = 64;
+
+  @override
+  void initState() {
+    super.initState();
+    // Group items into sections, preserving first-seen category order.
+    for (final item in widget.restaurant.menu) {
+      final cat = item.category.isEmpty ? 'Menu' : item.category;
+      (_byCategory[cat] ??= <MenuItem>[]).add(item);
+      if (!_order.contains(cat)) _order.add(cat);
+    }
+    _sectionKeys = List.generate(_order.length, (_) => GlobalKey());
+    _scroll.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _scroll.removeListener(_onScroll);
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_programmaticScroll) return;
+    final listBox = context.findRenderObject() as RenderBox?;
+    if (listBox == null) return;
+    int current = _active;
+    double best = double.negativeInfinity;
+    for (var i = 0; i < _sectionKeys.length; i++) {
+      final ctx = _sectionKeys[i].currentContext;
+      if (ctx == null) continue;
+      final box = ctx.findRenderObject() as RenderBox?;
+      if (box == null) continue;
+      final dy = box.localToGlobal(Offset.zero, ancestor: listBox).dy;
+      // Pick the section header closest to (but not past) the top line.
+      if (dy <= _activeThreshold && dy > best) {
+        best = dy;
+        current = i;
+      }
+    }
+    if (current != _active) setState(() => _active = current);
+  }
+
+  Future<void> _jumpTo(int index) async {
+    HapticFeedback.selectionClick();
+    setState(() => _active = index);
+    final ctx = _sectionKeys[index].currentContext;
+    if (ctx == null) return;
+    _programmaticScroll = true;
+    await Scrollable.ensureVisible(
+      ctx,
+      duration: TastyMotion.durationMd,
+      curve: TastyMotion.emphasizedDecelerate,
+    );
+    if (mounted) _programmaticScroll = false;
+  }
+
+  void _openCategorySheet() {
+    HapticFeedback.lightImpact();
+    final scheme = Theme.of(context).colorScheme;
+    final text = Theme.of(context).textTheme;
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: scheme.surfaceContainerLowest,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(TastyRadii.xxl)),
       ),
-      itemBuilder: (_, i) =>
-          _MenuItemTile(item: restaurant.menu[i], restaurant: restaurant),
-      separatorBuilder: (_, __) => const SizedBox(height: TastySpacing.gutterCard),
-      itemCount: restaurant.menu.length,
+      builder: (sheetCtx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(
+            TastySpacing.marginPage,
+            TastySpacing.stackMd,
+            TastySpacing.marginPage,
+            TastySpacing.stackMd,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: scheme.outlineVariant,
+                    borderRadius: TastyRadii.fullRadius,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+              Text('Categories', style: text.titleLarge),
+              const SizedBox(height: TastySpacing.stackSm),
+              Flexible(
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: _order.length,
+                  itemBuilder: (_, i) {
+                    final selected = i == _active;
+                    return ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(_order[i],
+                          style: text.bodyLarge?.copyWith(
+                            color: selected ? scheme.primary : scheme.onSurface,
+                            fontWeight:
+                                selected ? FontWeight.w700 : FontWeight.w500,
+                          )),
+                      trailing: Text('${_byCategory[_order[i]]!.length}',
+                          style: text.labelMedium
+                              ?.copyWith(color: scheme.onSurfaceVariant)),
+                      onTap: () {
+                        Navigator.of(sheetCtx).pop();
+                        _jumpTo(i);
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    final scheme = Theme.of(context).colorScheme;
+
+    return Column(
+      children: [
+        if (_order.length > 1)
+          _CategoryBar(
+            categories: _order,
+            activeIndex: _active,
+            onSelect: _jumpTo,
+            onMenuTap: _openCategorySheet,
+          ),
+        Expanded(
+          child: ListView(
+            controller: _scroll,
+            // Clear the lifted bag pill (which now sits above the nav inset).
+            padding: EdgeInsets.fromLTRB(
+              TastySpacing.marginPage,
+              TastySpacing.stackLg,
+              TastySpacing.marginPage,
+              150 + MediaQuery.viewPaddingOf(context).bottom,
+            ),
+            children: [
+              for (var s = 0; s < _order.length; s++) ...[
+                if (s > 0) const SizedBox(height: TastySpacing.sectionGap),
+                Padding(
+                  key: _sectionKeys[s],
+                  padding: const EdgeInsets.only(bottom: TastySpacing.stackMd),
+                  child: Row(
+                    children: [
+                      Text(_order[s], style: text.titleMedium),
+                      const SizedBox(width: 8),
+                      Text('${_byCategory[_order[s]]!.length}',
+                          style: text.labelMedium
+                              ?.copyWith(color: scheme.onSurfaceVariant)),
+                    ],
+                  ),
+                ),
+                for (final item in _byCategory[_order[s]]!) ...[
+                  _MenuItemTile(item: item, restaurant: widget.restaurant),
+                  const SizedBox(height: TastySpacing.gutterCard),
+                ],
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Horizontal, scrollable category selector with a leading "≡" button that
+/// opens the full vertical category list. Mirrors the Toters / Uber-Eats menu
+/// nav. The active chip auto-scrolls into view as the menu scrolls.
+class _CategoryBar extends StatefulWidget {
+  const _CategoryBar({
+    required this.categories,
+    required this.activeIndex,
+    required this.onSelect,
+    required this.onMenuTap,
+  });
+  final List<String> categories;
+  final int activeIndex;
+  final ValueChanged<int> onSelect;
+  final VoidCallback onMenuTap;
+
+  @override
+  State<_CategoryBar> createState() => _CategoryBarState();
+}
+
+class _CategoryBarState extends State<_CategoryBar> {
+  final ScrollController _hScroll = ScrollController();
+  late List<GlobalKey> _chipKeys =
+      List.generate(widget.categories.length, (_) => GlobalKey());
+
+  @override
+  void didUpdateWidget(_CategoryBar old) {
+    super.didUpdateWidget(old);
+    if (old.categories.length != widget.categories.length) {
+      _chipKeys =
+          List.generate(widget.categories.length, (_) => GlobalKey());
+    }
+    if (old.activeIndex != widget.activeIndex) {
+      // Keep the active chip on-screen as the menu scrolls.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final ctx = _chipKeys[widget.activeIndex].currentContext;
+        if (ctx != null) {
+          Scrollable.ensureVisible(
+            ctx,
+            duration: TastyMotion.durationSm,
+            curve: Curves.easeInOut,
+            alignment: 0.5,
+          );
+        }
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _hScroll.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final text = Theme.of(context).textTheme;
+    return Container(
+      color: scheme.surface,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            height: 52,
+            child: Row(
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.menu),
+                  color: scheme.onSurface,
+                  tooltip: 'All categories',
+                  onPressed: widget.onMenuTap,
+                ),
+                Expanded(
+                  child: ListView.separated(
+                    controller: _hScroll,
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.only(right: TastySpacing.marginPage),
+                    itemCount: widget.categories.length,
+                    separatorBuilder: (_, __) => const SizedBox(width: 8),
+                    itemBuilder: (context, i) {
+                      final selected = i == widget.activeIndex;
+                      return Center(
+                        child: GestureDetector(
+                          key: _chipKeys[i],
+                          onTap: () => widget.onSelect(i),
+                          child: AnimatedContainer(
+                            duration: TastyMotion.durationSm,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: selected
+                                  ? scheme.primary
+                                  : scheme.surfaceContainerLow,
+                              borderRadius: TastyRadii.fullRadius,
+                              border: Border.all(
+                                color: selected
+                                    ? scheme.primary
+                                    : scheme.outlineVariant,
+                              ),
+                            ),
+                            child: Text(
+                              widget.categories[i],
+                              style: text.labelLarge?.copyWith(
+                                color: selected
+                                    ? scheme.onPrimary
+                                    : scheme.onSurface,
+                                fontWeight: selected
+                                    ? FontWeight.w700
+                                    : FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Divider(height: 1, thickness: 1, color: scheme.outlineVariant.withValues(alpha: 0.4)),
+        ],
+      ),
     );
   }
 }
@@ -443,26 +777,44 @@ class _InfoTile extends StatelessWidget {
 }
 
 class _StatPill extends StatelessWidget {
-  const _StatPill({required this.icon, required this.label, required this.sub});
+  const _StatPill({
+    required this.icon,
+    required this.label,
+    required this.sub,
+    this.highlight = false,
+  });
   final IconData icon;
   final String label;
   final String sub;
+
+  /// When true the pill uses the success (green) palette — used for the
+  /// "free delivery" perk so it reads as a benefit, not a neutral stat.
+  final bool highlight;
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
+    final bg = highlight
+        ? TastyColors.successContainer
+        : scheme.surfaceContainerLow;
+    final fg = highlight ? TastyColors.onSuccessContainer : scheme.primary;
+    final labelColor =
+        highlight ? TastyColors.onSuccessContainer : scheme.onSurface;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: scheme.surfaceContainerLow,
+        color: bg,
         borderRadius: TastyRadii.fullRadius,
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: scheme.primary, size: 16),
+          Icon(icon, color: fg, size: 16),
           const SizedBox(width: 6),
-          Text(label, style: text.labelMedium?.copyWith(fontWeight: FontWeight.w700)),
+          Text(label,
+              style: text.labelMedium
+                  ?.copyWith(fontWeight: FontWeight.w700, color: labelColor)),
           if (sub.isNotEmpty) ...[
             const SizedBox(width: 4),
             Text(sub, style: text.labelSmall),
